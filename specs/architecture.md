@@ -16,19 +16,20 @@
 ## 2. 技術スタック (Tech Stack)
 
 ### Frontend (クライアント)
-*   **Framework**: React (コンポーネント指向でUIを構築)
+*   **Framework**: React 18 (boardgame.io との互換性のため v19 ではなく v18 を採用)
 *   **Build Tool**: Vite (高速な開発サーバーとビルド環境)
-*   **Language**: TypeScript (ゲームの状態やカードデータの型定義を共有し、バグを防止)
+*   **Language**: TypeScript (UIコンポーネントや型定義に使用)
 *   **Styling**: Tailwind CSS (または CSS Modules) (素早いスタイリングのため)
 
 ### Backend (サーバー)
-*   **Runtime**: Node.js (boardgame.io の Server モジュールを実行)
+*   **Runtime**: Node.js (v20/v22 等のLTS)
+*   **Entry Point**: `node server.js` (ES Modules として実行)
 *   **Communication**: WebSocket (boardgame.io 内部で socket.io を使用)
 
 ### Game Engine & State Management
 *   **Core Library**: boardgame.io
     *   **Game Logic**: ターン管理、勝敗判定、フェーズ管理を担当。
-    *   **Multiplayer**: Socket.io ベースの同期処理を担当。
+    *   **Implementation**: 互換性と実行の容易さを優先し、共有ロジック部分は JavaScript (`.js`) で記述する。
 
 ## 3. インフラ・デプロイ構成 (Infrastructure)
 
@@ -50,21 +51,31 @@
 1つのリポジトリでフロントエンドとサーバーの両方を管理する構成。
 
 ```
-my-card-game/
-├── package.json        # 依存関係管理
-├── server.js           # [Backend] Renderのエントリーポイント
+battle-line-web/
+├── package.json        # 依存関係管理 ("type": "module" 設定あり)
+├── server.js           # [Backend] エントリーポイント (ESM形式, 内部でCJSをrequire)
 ├── index.html
 ├── vite.config.ts
 ├── src/
 │   ├── App.tsx         # [Frontend] クライアントのルート
-│   ├── Game.ts         # [Shared] ゲームのルール・ロジック (重要)
-│   ├── moves.ts        # [Shared] カードを出す等のアクション定義
+│   ├── Game.js         # [Shared] ゲームのルール・ロジック (JavaScript/ESM)
+│   ├── moves.js        # [Shared] アクション定義 (JavaScript/ESM)
 │   ├── board/          # [Frontend] ゲーム画面のコンポーネント群
-│   └── types/          # [Shared] 型定義ファイル
+│   └── types/          # [Shared] 型定義ファイル (.ts)
 └── public/             # 静的ファイル (画像など)
 ```
 
-## 5. デプロイ設定詳細
+## 5. 実装上の注意点 (Tech Constraints)
+
+### A. TypeScript と JavaScript の混在
+*   **サーバー実行**: Node.js で直接実行するため、`server.js` およびそこから読み込まれる `Game.js`, `moves.js` は **JavaScript (ES Modules)** で記述する。
+*   **モジュール解決**: `server.js` 内で `boardgame.io/server` を読み込む際は、CommonJS 互換性のため `createRequire` を使用する。
+*   **型定義**: `src/types/` ディレクトリに `.ts` ファイルで型を定義し、フロントエンド (`.tsx`) からは `import type` で読み込む。JavaScript ファイル (`Game.js`) には型が付かないため、JSDoc 等で補完するか、フロントエンド側でキャストして対応する。
+
+### B. React バージョン
+*   `boardgame.io` (v0.50.x) が React 19 に完全対応していない可能性があるため、**React 18** を使用する。
+
+## 6. デプロイ設定詳細
 
 ### A. Render (Backend) 設定
 *   **Type**: Web Service
@@ -72,28 +83,21 @@ my-card-game/
 *   **Build Command**: `npm install`
 *   **Start Command**: `node server.js`
 *   **Environment Variables**:
-    *   `PORT`: `8000` (Renderが自動設定する場合もあるが明示推奨)
-
-**注意点**:
-*   CORS設定で Vercel のドメイン (例: `https://myapp.vercel.app`) を許可する必要がある。
-*   無料枠は15分アイドルでスリープするため、初回アクセス時は起動に時間がかかる。
+    *   `PORT`: `8000`
 
 ### B. Vercel (Frontend) 設定
 *   **Framework Preset**: Vite
 *   **Build Command**: `vite build`
 *   **Output Directory**: `dist`
 *   **Environment Variables**:
-    *   `VITE_SERVER_URL`: `https://myapp-backend.onrender.com` (RenderのURLを指定)
+    *   `VITE_SERVER_URL`: `https://myapp-backend.onrender.com`
 
-## 6. 開始コマンド
+## 7. 開発コマンド
 
 ```bash
-# Vite (React + TypeScript) でプロジェクト作成
-npm create vite@latest my-card-game -- --template react-ts
+# サーバー起動 (localhost:8000)
+npm run serve
 
-# ディレクトリ移動
-cd my-card-game
-
-# boardgame.io のインストール
-npm install boardgame.io
+# フロントエンド起動 (localhost:5173)
+npm run dev
 ```
