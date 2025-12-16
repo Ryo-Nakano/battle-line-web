@@ -1,12 +1,13 @@
-import { useDraggable } from '@dnd-kit/core';
-import type { Card as CardType } from '../types';
+import type { Card as CardType, LocationInfo } from '../types';
 import { cn } from '../utils';
 
 interface CardProps {
   card: CardType;
-  isDraggable?: boolean;
+  location?: LocationInfo; // カードの現在の場所（移動元特定用）
   isSelected?: boolean;
+  onClick?: (card: CardType, location?: LocationInfo) => void;
   className?: string;
+  isInteractable?: boolean; // クリック可能かどうか
 }
 
 const colorMap: Record<string, string> = {
@@ -18,26 +19,23 @@ const colorMap: Record<string, string> = {
   purple: 'border-purple-500 text-purple-600 bg-purple-50',
 };
 
-export function Card({ card, isDraggable = true, isSelected, className }: CardProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: card.id,
-    data: { card },
-    disabled: !isDraggable,
-  });
-
-  const baseStyles = "w-14 h-20 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-lg border-2 flex items-center justify-center font-bold text-lg md:text-xl shadow-sm select-none transition-transform touch-none";
+export function Card({ card, location, isSelected, onClick, className, isInteractable = true }: CardProps) {
   
-  // Style for face down
+  const handleClick = (e: React.MouseEvent) => {
+    if (!isInteractable || !onClick) return;
+    e.stopPropagation(); // Zoneのクリックイベント発火を防ぐ
+    onClick(card, location);
+  };
+
+  const baseStyles = "w-14 h-20 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-lg border-2 flex items-center justify-center font-bold text-lg md:text-xl shadow-sm select-none transition-transform transition-colors box-border";
+  
+  // 裏向きの場合
   if (card.faceDown) {
     return (
       <div
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
         className={cn(
             baseStyles, 
             "bg-slate-700 border-slate-600",
-            isDragging && "opacity-50",
             className
         )}
       >
@@ -46,9 +44,9 @@ export function Card({ card, isDraggable = true, isSelected, className }: CardPr
     );
   }
 
-  // Style by type
+  // 表向きの場合: カードタイプに応じたスタイル
   let specificStyles = "bg-white border-gray-300 text-gray-800";
-  let content = null;
+  let content: React.ReactNode = null;
 
   if (card.type === 'troop' && card.color) {
     specificStyles = colorMap[card.color] || specificStyles;
@@ -60,16 +58,15 @@ export function Card({ card, isDraggable = true, isSelected, className }: CardPr
 
   return (
     <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
+      onClick={handleClick}
       className={cn(
         baseStyles,
         specificStyles,
-        isDragging && "opacity-50 z-50 scale-105 shadow-xl",
-        isSelected && "ring-2 ring-blue-400",
-        !isDraggable && "cursor-default",
-        isDraggable && "cursor-grab active:cursor-grabbing",
+        // インタラクションスタイル
+        isInteractable && "cursor-pointer hover:-translate-y-1 hover:shadow-md",
+        !isInteractable && "cursor-default",
+        // 選択状態スタイル
+        isSelected && "ring-4 ring-blue-500 -translate-y-2 shadow-lg z-10",
         className
       )}
     >

@@ -31,6 +31,54 @@ const resolveLocation = (G, ctx, location) => {
 };
 
 export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
+  // --- バリデーション: 操作権限のチェック ---
+  const playerID = ctx.currentPlayer;
+
+  // 1. 移動元のチェック (自分の持ち物か？)
+  if (from.area === 'hand') {
+    if (from.playerId !== playerID) {
+      console.warn(`Cannot move opponent's hand card. Player: ${playerID}, Target: ${from.playerId}`);
+      return INVALID_MOVE;
+    }
+  } else if (from.area === 'board') {
+    // 自分のスロット (p0_slots/p1_slots) か確認
+    // tactic_zone にあるカードは移動できるか？ -> 一度置いたら移動不可が基本ルールだが、
+    // 実装段階では「操作性」優先で動かせても良いかもしれない。
+    // ただし「相手のスロット」にあるカードは絶対に動かせない。
+    const isMySlot = (playerID === '0' && from.slotType === 'p0_slots') ||
+                     (playerID === '1' && from.slotType === 'p1_slots');
+    // 戦術カードが共通ゾーンにある場合、それを動かせるのは誰か？
+    // 通常は再配置系のカード効果以外では動かせない。
+    // ここでは「自分のスロット」以外からの移動を禁止する（戦術ゾーンからの移動も一旦禁止）。
+    if (!isMySlot) {
+       // ただし、もし「自分のスロット」から「自分のスロット」への移動機能を作るならOKだが、
+       // ここでは「相手のスロット」を触ろうとしたら弾く。
+       const isOpponentSlot = (playerID === '0' && from.slotType === 'p1_slots') ||
+                              (playerID === '1' && from.slotType === 'p0_slots');
+       if (isOpponentSlot) return INVALID_MOVE;
+    }
+  }
+
+  // 2. 移動先のチェック (自分の陣地か？)
+  if (to.area === 'hand') {
+    // 手札に戻すことは基本できない（偵察などの効果を除く）
+    // UI操作で手札に戻すのを防ぐため一旦禁止
+    return INVALID_MOVE;
+  } else if (to.area === 'board') {
+    // 相手のスロットには置けない
+    const isOpponentSlot = (playerID === '0' && to.slotType === 'p1_slots') ||
+                           (playerID === '1' && to.slotType === 'p0_slots');
+    if (isOpponentSlot) {
+      console.warn(`Cannot place card in opponent's slot.`);
+      return INVALID_MOVE;
+    }
+    // 戦術ゾーン (tactic_zone) への配置はOK（環境カード）
+  } else if (to.area === 'deck') {
+      // デッキに戻すのは特殊効果のみだが、UIドラッグで戻せないようにする
+      return INVALID_MOVE;
+  }
+
+
   const sourceList = resolveLocation(G, ctx, from);
   const targetList = resolveLocation(G, ctx, to);
 

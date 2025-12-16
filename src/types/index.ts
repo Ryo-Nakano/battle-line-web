@@ -39,3 +39,11 @@ export interface GameState {
   // ゲーム進行用フラグ（必要に応じて追加）
   isGameEnded?: boolean;
 }
+
+export type LocationInfo = {
+  area: 'hand' | 'board' | 'deck' | 'discard';
+  playerId?: string; // 'hand'の場合のみ
+  flagIndex?: number;   // 'board'の場合のみ (0-8)
+  slotType?: 'p0_slots' | 'p1_slots' | 'tactic_zone'; // 'board'かつ'flagIndex'がある場合
+  deckType?: 'troop' | 'tactic'; // 'deck'の場合
+};
