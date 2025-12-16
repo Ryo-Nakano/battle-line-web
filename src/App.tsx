@@ -1,5 +1,5 @@
 import { Client } from 'boardgame.io/react';
-import { SocketIO } from 'boardgame.io/multiplayer';
+import { Local } from 'boardgame.io/multiplayer';
 import { DndContext } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 // @ts-expect-error Game.js is not typed
@@ -21,12 +21,37 @@ const BattleLineBoard = ({ G, ctx, moves, playerID }: BoardProps<GameState>) => 
         <h1 className="text-3xl font-bold mb-4 text-red-600">Battle Line (Tailwind & DnD Active)</h1>
         <p>Player ID: {playerID}</p>
         <p>Current Turn: {ctx.currentPlayer}</p>
-        <div className="mt-4">
+        <div className="mt-4 space-x-2">
           <button 
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => moves.playCard('some-card-id')}
+            onClick={() => moves.drawCard('troop')}
           >
-            Play Card Action
+            Draw Troop
+          </button>
+          
+          <button 
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => {
+              const myHand = G.players[playerID || '0'].hand;
+              if (myHand.length > 0) {
+                moves.moveCard({
+                  cardId: myHand[0].id,
+                  from: { area: 'hand', playerId: playerID || '0' },
+                  to: { area: 'board', flagIndex: 0, slotType: 'p0_slots' }
+                });
+              } else {
+                alert('No cards in hand to move!');
+              }
+            }}
+          >
+            Move Hand[0] to Flag 0
+          </button>
+
+          <button 
+            className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => moves.claimFlag(0)}
+          >
+            Toggle Flag 0
           </button>
         </div>
         <pre className="mt-4 bg-gray-100 p-2 rounded">
@@ -41,7 +66,7 @@ const BattleLineBoard = ({ G, ctx, moves, playerID }: BoardProps<GameState>) => 
 const BattleLineClient = Client({
   game: BattleLine,
   board: BattleLineBoard,
-  multiplayer: SocketIO({ server: 'localhost:8000' }),
+  multiplayer: Local(),
   debug: true,
 });
 
