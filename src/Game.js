@@ -1,5 +1,5 @@
 // src/Game.js
-// import { INVALID_MOVE } from 'boardgame.io/core'; // ESM import error workaround
+// import { INVALID_MOVE } from 'boardgame.io/core'; // ESM インポートエラー回避策
 
 // カード生成関数（内部利用）
 const createTroopDeck = () => {
@@ -33,6 +33,8 @@ const createTacticDeck = () => {
   }));
 };
 
+import { drawCard, moveCard, claimFlag, shuffleDeck } from './moves';
+
 export const BattleLine = {
   name: 'battle-line',
   
@@ -63,10 +65,10 @@ export const BattleLine = {
   },
 
   moves: {
-    // Step 3で実装するため、一旦空または既存のものを残す
-    playCard: ({ G, ctx }, cardId) => {
-        // 仮の実装
-    }
+    drawCard,
+    moveCard,
+    claimFlag,
+    shuffleDeck
   },
 
   // ターン設定などはデフォルトでOK
