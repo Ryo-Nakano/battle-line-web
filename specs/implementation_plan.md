@@ -115,27 +115,28 @@
     *   `Card.tsx`:
         *   `Card` 型を受け取り、部隊カード（色・数字）、戦術カード（名前）、裏面（`faceDown` が `true` の場合）を表示。
         *   Tailwind CSS でサイズ、影、ホバーエフェクトなどをスタイリング。
-        *   `@dnd-kit/core` の `useDraggable` を使用し、ドラッグ可能にする。
+        *   `onClick` プロパティを受け取り、クリックイベントを親に通知する。
+        *   `isSelected` プロパティにより、選択状態（ハイライト）を表現する。
     *   `Flag.tsx`:
         *   `FlagState` を受け取り、赤いポーンのような形状と、`owner` に応じた確保マーカー（色付きの光やアイコン）を表示。
         *   クリックハンドラを持ち、`moves.claimFlag` を呼び出す。
-    *   `Zone.tsx` (または `DropArea.tsx`):
-        *   カードをドロップできる領域 (`DropZone`) として機能。
-        *   `@dnd-kit/core` の `useDroppable` を使用し、ドロップ可能にする。
+    *   `Zone.tsx`:
+        *   カード配置領域として機能。
+        *   自身のクリック (`onZoneClick`) と、内部カードのクリック (`onCardClick`) を処理する。
         *   `FlagState` 内の `p0_slots`, `p1_slots`, `tactic_zone` や、`PlayerState` の `hand` など、カードリストをレンダリングするコンポーネントのラッパーとなる。
     *   `Hand.tsx`:
         *   `PlayerState` の `hand` を受け取り、カードを横一列に表示。スクロール機能または縮小表示機能（`specs/game_rule.md`参照）を実装。
-        *   DnDの `DropZone` としても機能し、手札内の並び替えも可能にする。
+        *   クリックイベントを `Zone` へ伝播させる。
 
-### Step 5: メインボードとDnDの統合 (Smart Components)
-*   **目的**: ゲーム状態とDnDイベントを接続する。
+### Step 5: メインボードとUI操作の統合 (Click-to-Move)
+*   **目的**: ゲーム状態とUIインタラクションを接続する。
 *   **ファイル**: `src/board/Board.tsx` (または `src/App.tsx` に近い場所)
 *   **作業**:
     *   `boardgame.io` の `Client` コンポーネント内でレンダリングされるメインUI。
-    *   全体を `<DndContext>` でラップし、`onDragEnd` イベントハンドラを実装する。
-    *   `onDragEnd` イベントハンドラ内で、ドロップ元の `id` とドロップ先の `id` (DnDContextから提供される) を解析し、適切な `moves.moveCard` を呼び出す。
-        *   例: `fromLocation = parseDragId(active.id)`, `toLocation = parseDropId(over.id)` のようにヘルパー関数でIDを `LocationInfo` に変換。
-        *   `G.moves.moveCard({ cardId: active.data.current.card.id, from: fromLocation, to: toLocation });`
+    *   **状態管理**: `activeCard` (選択中のカード) を `useState` で管理する。
+    *   **イベントハンドリング**:
+        *   **カードクリック**: `activeCard` をセットまたは解除（トグル）。
+        *   **Zoneクリック**: `activeCard` がある場合、その場所への `moves.moveCard` を呼び出す。
     *   `specs/game_rule.md` に定義された「センターエリア（戦線）」「プレイエリア（カード配置ゾーン）」「ハンドエリア」「デッキエリア」をCSSグリッド等でレイアウトする。
     *   **視点制御**: `playerID` に応じて盤面を反転表示することで、常に自分の陣地が手前に来るように表示する（React Contextなどで `currentPlayerID` を提供し、CSS/コンポーネントの描画順を制御）。
 
