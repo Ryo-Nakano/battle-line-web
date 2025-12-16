@@ -1,8 +1,9 @@
 import { Client } from 'boardgame.io/react';
 import { SocketIO } from 'boardgame.io/multiplayer';
 import { DndContext } from '@dnd-kit/core';
-// @ts-ignore
-import { MyGame } from './Game.js';
+import type { DragEndEvent } from '@dnd-kit/core';
+// @ts-expect-error Game.js is not typed
+import { BattleLine } from './Game.js';
 import type { GameState } from './types';
 import type { BoardProps } from 'boardgame.io/react';
 
@@ -10,7 +11,7 @@ import type { BoardProps } from 'boardgame.io/react';
 const BattleLineBoard = ({ G, ctx, moves, playerID }: BoardProps<GameState>) => {
   console.log('Rendering Board', { G, ctx, playerID });
   
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     console.log('Drag ended', event);
   };
 
@@ -38,7 +39,7 @@ const BattleLineBoard = ({ G, ctx, moves, playerID }: BoardProps<GameState>) => 
 
 // クライアントの作成
 const BattleLineClient = Client({
-  game: MyGame,
+  game: BattleLine,
   board: BattleLineBoard,
   multiplayer: SocketIO({ server: 'localhost:8000' }),
   debug: true,

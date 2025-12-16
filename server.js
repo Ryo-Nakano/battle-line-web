@@ -1,11 +1,11 @@
 import { createRequire } from 'module';
-import { MyGame } from './src/Game.js';
+import { BattleLine } from './src/Game.js';
 
 const require = createRequire(import.meta.url);
 const { Server, Origins } = require('boardgame.io/server');
 
 const server = Server({
-  games: [MyGame],
+  games: [BattleLine],
   origins: [
     Origins.LOCALHOST, 
     process.env.VITE_SERVER_URL || 'https://myapp.vercel.app'
