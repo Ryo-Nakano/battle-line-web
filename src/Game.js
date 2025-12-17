@@ -59,7 +59,8 @@ export const BattleLine = {
       players,
       troopDeck,
       tacticDeck,
-      discardPile: [],
+      troopDiscard: [],
+      tacticDiscard: [],
       flags,
     };
   },
