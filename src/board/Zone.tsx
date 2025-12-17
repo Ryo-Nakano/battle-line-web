@@ -14,6 +14,7 @@ interface ZoneProps {
   isInteractable?: boolean; // クリック可能か（カード選択や配置先指定）
   activeCardId?: string; // 選択中のカードID（ハイライト用）
   onCardClick?: (card: CardType, location?: LocationInfo) => void;
+  onInfoClick?: (card: CardType) => void;
   onZoneClick?: (location: LocationInfo) => void;
 }
 
@@ -27,6 +28,7 @@ export function Zone({
   isInteractable = true,
   activeCardId,
   onCardClick,
+  onInfoClick,
   onZoneClick
 }: ZoneProps) {
   const isSlot = type === 'slot';
@@ -72,6 +74,7 @@ export function Zone({
                isInteractable={isInteractable}
                isSelected={activeCardId === card.id}
                onClick={onCardClick}
+               onInfoClick={onInfoClick}
              />
         </div>
       ))}
