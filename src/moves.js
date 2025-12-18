@@ -1,5 +1,5 @@
 // src/moves.js
-import { INVALID_MOVE } from 'boardgame.io/core';
+const INVALID_MOVE = 'INVALID_MOVE';
 
 export const drawCard = ({ G, ctx }, deckType) => {
   const deck = deckType === 'troop' ? G.troopDeck : G.tacticDeck;

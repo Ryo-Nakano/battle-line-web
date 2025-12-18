@@ -154,22 +154,19 @@
 
 ### Step 7: サーバー実装とオンライン化
 *   **目的**: 異なるデバイス間でオンライン対戦（マルチプレイヤー）を可能にする。
-*   **ファイル**: `server.js`, `src/App.tsx`
+*   **ファイル**: `server.js`, `src/App.tsx`, `package.json`
 *   **作業**:
-    1.  **サーバー実装 (`server.js`)**:
-        *   `boardgame.io/server` を使用してゲームサーバーを構築する。
-        *   `Game.js` (ロジック) をインポートしてサーバーに登録する。
-        *   静的ファイル（`dist/`）の配信設定を行う（フロントエンドとバックエンドを同一起源でホストする場合）。
-        *   ポート番号の設定（環境変数 `PORT` 対応）。
-    2.  **クライアント設定変更 (`src/App.tsx`)**:
-        *   `multiplayer: Local()` を `multiplayer: SocketIO({ server: '...' })` に変更する。
-        *   開発環境 (`localhost`) と本番環境で接続先サーバーURLを自動で切り替えるロジックを実装する。
-    3.  **依存関係の整理**:
-        *   `koa`, `koa-static` など、サーバー実行に必要なパッケージを `package.json` に追加する。
-    4.  **動作確認**:
-        *   `npm run build` でフロントエンドをビルド。
-        *   `node server.js` でサーバーを起動。
-        *   複数のブラウザウィンドウ（または別デバイス）でアクセスし、同期が取れているか確認する。
+    1.  **Step 7-1: サーバー起動エラーの修正** (完了)
+        *   `src/moves.js` の `INVALID_MOVE` インポート問題を修正し、`npm run serve` が正常動作することを確認済み。
+    2.  **Step 7-2: クライアント側の接続設定 (Socket.IO化)**
+        *   **現状**: `src/App.tsx` が `Local()` マルチプレイヤーを使用している。
+        *   **対応**: `SocketIO` アダプターに切り替え、環境変数 (`import.meta.env`) に応じて接続先（ローカル/本番）を自動判定するように変更する。
+            *   ローカル開発時: `http://localhost:8000`
+            *   本番環境: `VITE_SERVER_URL` または `window.location.protocol + '//' + window.location.hostname + ':8000'` (別途調整)
+        *   **ゴール**: `npm run serve` (サーバー) と `npm run dev` (フロント) を併用し、ブラウザの別タブ間で同期された対戦ができること。
+    3.  **Step 7-3: 本番環境（Render）向け設定**
+        *   **現状**: デプロイ用の設定が未検証。
+        *   **対応**: `package.json` に `start` コマンド等を追加し、Render の設定に合わせる。
 
 ## 実装上の注意点
 
