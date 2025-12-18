@@ -220,9 +220,23 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         {/* ■ 下部エリア: 自分 (Me) */}
         <div className="flex flex-col gap-2">
              <div className="flex justify-between items-center px-4">
-                <h2 className="text-xl font-bold text-blue-400">
-                    You (Player {myID}) {myID === ctx.currentPlayer ? ' - YOUR TURN' : ''}
-                </h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-bold text-blue-400">
+                        You (Player {myID}) {myID === ctx.currentPlayer ? ' - YOUR TURN' : ''}
+                    </h2>
+                    <button
+                        className={`px-4 py-1 rounded font-bold text-sm transition-colors ${
+                            isMyTurn 
+                            ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md' 
+                            : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        }`}
+                        onClick={() => isMyTurn && moves.endTurn()}
+                        disabled={!isMyTurn}
+                    >
+                        End Turn
+                    </button>
+                </div>
+
                 <div className="flex items-center gap-4">
                      <div className="flex gap-4 mr-2">
                          <DeckPile 

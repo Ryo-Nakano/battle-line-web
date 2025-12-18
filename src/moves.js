@@ -1,6 +1,10 @@
 // src/moves.js
 const INVALID_MOVE = 'INVALID_MOVE';
 
+export const endTurn = ({ events }) => {
+  events.endTurn();
+};
+
 export const drawCard = ({ G, ctx }, deckType) => {
   const deck = deckType === 'troop' ? G.troopDeck : G.tacticDeck;
   
