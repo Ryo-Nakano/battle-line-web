@@ -178,7 +178,15 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
 
                                 {/* 中央フラッグ & 戦術ゾーン */}
                                 <div className="my-2 z-10 relative flex justify-center items-center">
-                                    <Flag flag={flag} />
+                                    <Flag 
+                                        flag={flag} 
+                                        onClaim={(id) => {
+                                            const index = parseInt(id.split('-')[1], 10);
+                                            if (isMyTurn && !isSpectating) {
+                                                moves.claimFlag(index);
+                                            }
+                                        }}
+                                    />
                                     
                                     {/* 戦術ゾーン (環境カード用) - フラッグの右側に配置 */}
                                     <div className="absolute left-full ml-1 h-12 w-10 z-20">
