@@ -25,7 +25,7 @@ const resolveLocation = (G, ctx, location) => {
   } else if (location.area === 'deck') {
     return location.deckType === 'troop' ? G.troopDeck : G.tacticDeck;
   } else if (location.area === 'discard') {
-    return G.discardPile;
+    return location.deckType === 'troop' ? G.troopDiscard : G.tacticDiscard;
   }
   return null;
 };
@@ -61,9 +61,15 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
 
   // 2. 移動先のチェック (自分の陣地か？)
   if (to.area === 'hand') {
-    // 手札に戻すことは基本できない（偵察などの効果を除く）
-    // UI操作で手札に戻すのを防ぐため一旦禁止
-    return INVALID_MOVE;
+    // 盤面から手札に戻すことを許可（再配置やミスクリック修正のため）
+    if (from.area !== 'board') {
+        // デッキや捨て札からは戻せない
+        return INVALID_MOVE;
+    }
+    // 自分の手札に戻すかチェック
+    if (to.playerId && to.playerId !== playerID) {
+        return INVALID_MOVE;
+    }
   } else if (to.area === 'board') {
     // 相手のスロットには置けない
     const isOpponentSlot = (playerID === '0' && to.slotType === 'p1_slots') ||
@@ -74,8 +80,14 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
     }
     // 戦術ゾーン (tactic_zone) への配置はOK（環境カード）
   } else if (to.area === 'deck') {
-      // デッキに戻すのは特殊効果のみだが、UIドラッグで戻せないようにする
-      return INVALID_MOVE;
+      // デッキに戻すのは特殊効果（偵察）のみ
+      // 移動元が手札の場合のみ許可する
+      if (from.area !== 'hand') {
+          return INVALID_MOVE;
+      }
+  } else if (to.area === 'discard') {
+      // 捨て札タイプが指定されていない場合はエラー
+      if (!to.deckType) return INVALID_MOVE;
   }
 
 
@@ -93,8 +105,26 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
     return INVALID_MOVE;
   }
 
+  const card = sourceList[cardIndex];
+
+  // 捨て札への移動の場合、カードタイプとパイルタイプの一致を確認
+  if (to.area === 'discard') {
+      if (card.type !== to.deckType) {
+          console.warn(`Type mismatch: Cannot discard ${card.type} card to ${to.deckType} pile.`);
+          return INVALID_MOVE;
+      }
+  }
+
+  // デッキへの移動の場合もタイプ一致を確認
+  if (to.area === 'deck') {
+      if (card.type !== to.deckType) {
+          console.warn(`Type mismatch: Cannot return ${card.type} card to ${to.deckType} deck.`);
+          return INVALID_MOVE;
+      }
+  }
+
   // 移動元から削除
-  const [card] = sourceList.splice(cardIndex, 1);
+  sourceList.splice(cardIndex, 1);
 
   // 移動先に追加
   targetList.push(card);

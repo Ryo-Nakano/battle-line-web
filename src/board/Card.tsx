@@ -1,11 +1,13 @@
 import type { Card as CardType, LocationInfo } from '../types';
 import { cn } from '../utils';
+import { TACTICS_DATA } from '../constants/tactics';
 
 interface CardProps {
   card: CardType;
   location?: LocationInfo; // カードの現在の場所（移動元特定用）
   isSelected?: boolean;
   onClick?: (card: CardType, location?: LocationInfo) => void;
+  onInfoClick?: (card: CardType) => void;
   className?: string;
   isInteractable?: boolean; // クリック可能かどうか
 }
@@ -19,7 +21,7 @@ const colorMap: Record<string, string> = {
   purple: 'border-purple-500 text-purple-600 bg-purple-50',
 };
 
-export function Card({ card, location, isSelected, onClick, className, isInteractable = true }: CardProps) {
+export function Card({ card, location, isSelected, onClick, onInfoClick, className, isInteractable = true }: CardProps) {
   
   const handleClick = (e: React.MouseEvent) => {
     if (!isInteractable || !onClick) return;
@@ -31,15 +33,22 @@ export function Card({ card, location, isSelected, onClick, className, isInterac
   
   // 裏向きの場合
   if (card.faceDown) {
+    const isTactic = card.type === 'tactic';
+    const backStyles = isTactic 
+        ? "bg-amber-900 border-amber-700 text-amber-200/50" 
+        : "bg-slate-700 border-slate-600 text-slate-400/50";
+    
     return (
       <div
         className={cn(
             baseStyles, 
-            "bg-slate-700 border-slate-600",
+            backStyles,
             className
         )}
       >
-        <span className="text-slate-500 text-xs">BL</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest rotate-45">
+            {isTactic ? 'TACTIC' : 'TROOP'}
+        </span>
       </div>
     );
   }
@@ -52,8 +61,27 @@ export function Card({ card, location, isSelected, onClick, className, isInterac
     specificStyles = colorMap[card.color] || specificStyles;
     content = card.value;
   } else if (card.type === 'tactic') {
-    specificStyles = "bg-gray-100 border-gray-400 text-gray-700 text-xs text-center px-1 break-words leading-tight";
-    content = card.name;
+    specificStyles = "bg-gray-100 border-gray-400 text-gray-700 text-xs text-center px-1 break-words leading-tight relative";
+    
+    const tacticInfo = card.name ? TACTICS_DATA[card.name.toLowerCase()] : null;
+    const displayName = tacticInfo ? tacticInfo.title : card.name;
+
+    content = (
+        <>
+            {displayName}
+            {onInfoClick && (
+                <button
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-amber-600 text-white rounded-full flex items-center justify-center text-[10px] font-serif hover:bg-amber-500 shadow-sm z-20"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onInfoClick(card);
+                    }}
+                >
+                    i
+                </button>
+            )}
+        </>
+    );
   }
 
   return (
