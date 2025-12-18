@@ -138,11 +138,12 @@ export const claimFlag = ({ G, ctx }, flagIndex) => {
   const flag = G.flags[flagIndex];
   if (!flag) return INVALID_MOVE;
 
-  if (flag.owner === ctx.currentPlayer) {
-    flag.owner = null; // トグル解除
-  } else {
-    flag.owner = ctx.currentPlayer; // トグル設定（または上書き）
+  // 既に確保済みの場合は操作不可
+  if (flag.owner !== null) {
+    return INVALID_MOVE;
   }
+
+  flag.owner = ctx.currentPlayer;
 };
 
 export const shuffleDeck = ({ G, random }, deckType) => {

@@ -8,6 +8,7 @@ import { DiscardPile } from './DiscardPile';
 import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { DeckPile } from './DeckPile';
+import { ConfirmModal } from './ConfirmModal';
 
 interface BattleLineBoardProps extends BoardProps<GameState> {
   // 追加のPropsが必要な場合はここに定義
@@ -23,6 +24,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
   const [discardModalType, setDiscardModalType] = useState<'troop' | 'tactic' | null>(null);
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
+  const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
 
   // プレイヤーIDの解決
   const currentPlayerID = playerID || '0';
@@ -133,7 +135,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         {/* ■ 上部エリア: 相手プレイヤー (Opponent) */}
         <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center px-4">
-                <h2 className="text-lg font-bold text-slate-400">
+                <h2 className={`text-lg font-bold ${opponentID === '0' ? 'text-red-400' : 'text-blue-400'}`}>
                     Player {opponentID} {opponentID === ctx.currentPlayer ? '(Thinking...)' : ''}
                 </h2>
                 <div className="text-xs text-slate-500">
@@ -182,8 +184,11 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         flag={flag} 
                                         onClaim={(id) => {
                                             const index = parseInt(id.split('-')[1], 10);
+                                            // 既に確保済みなら何もしない
+                                            if (flag.owner !== null) return;
+
                                             if (isMyTurn && !isSpectating) {
-                                                moves.claimFlag(index);
+                                                setPendingFlagIndex(index);
                                             }
                                         }}
                                     />
@@ -229,7 +234,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         <div className="flex flex-col gap-2">
              <div className="flex justify-between items-center px-4">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-blue-400">
+                    <h2 className={`text-xl font-bold ${myID === '0' ? 'text-red-400' : 'text-blue-400'}`}>
                         You (Player {myID}) {myID === ctx.currentPlayer ? ' - YOUR TURN' : ''}
                     </h2>
                     <button
@@ -305,6 +310,20 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
             isOpen={infoModalCard !== null}
             onClose={() => setInfoModalCard(null)}
             card={infoModalCard}
+        />
+
+        {/* フラッグ確保確認モーダル */}
+        <ConfirmModal
+            isOpen={pendingFlagIndex !== null}
+            onClose={() => setPendingFlagIndex(null)}
+            onConfirm={() => {
+                if (pendingFlagIndex !== null) {
+                    moves.claimFlag(pendingFlagIndex);
+                    setPendingFlagIndex(null);
+                }
+            }}
+            title="フラッグ確保の確認"
+            message="このフラッグを確保しますか？ 一度確保すると元に戻せません。"
         />
 
     </div>
