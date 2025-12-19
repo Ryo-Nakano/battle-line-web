@@ -33,7 +33,7 @@ const createTacticDeck = () => {
   }));
 };
 
-import { drawCard, moveCard, claimFlag, shuffleDeck } from './moves.js';
+import { drawCard, moveCard, claimFlag, shuffleDeck, endTurn } from './moves.js';
 
 export const BattleLine = {
   name: 'battle-line',
@@ -69,7 +69,8 @@ export const BattleLine = {
     drawCard,
     moveCard,
     claimFlag,
-    shuffleDeck
+    shuffleDeck,
+    endTurn
   },
 
   // ターン設定などはデフォルトでOK
