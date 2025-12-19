@@ -31,7 +31,8 @@ export interface GameState {
   };
   troopDeck: Card[];
   tacticDeck: Card[];
-  discardPile: Card[];
+  troopDiscard: Card[];
+  tacticDiscard: Card[];
   
   // 公開情報
   flags: FlagState[];

@@ -9,7 +9,11 @@
     "lint": "eslint .",
     "test": "vitest",
     "preview": "vite preview",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
