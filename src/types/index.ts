@@ -41,6 +41,7 @@ export interface GameState {
   scoutDrawCount: number | null;
   scoutReturnCount: number | null;
   activeGuileTactic: Card | null;
+  actionPerformed: boolean;
   
   // 公開情報
   flags: FlagState[];

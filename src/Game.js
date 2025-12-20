@@ -17,6 +17,7 @@ import {
   sortHand,
   resolveDeserter,
   resolveTraitor,
+  resolveRedeploy,
   cancelGuileTactic
 } from './moves.js';
 
@@ -78,6 +79,7 @@ export const BattleLine = {
       scoutDrawCount: null,
       scoutReturnCount: null,
       activeGuileTactic: null,
+      actionPerformed: false,
       flags,
     };
   },
@@ -92,6 +94,7 @@ export const BattleLine = {
     sortHand,
     resolveDeserter,
     resolveTraitor,
+    resolveRedeploy,
     cancelGuileTactic
   },
 };

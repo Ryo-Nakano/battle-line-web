@@ -24,15 +24,12 @@ import {
   TACTIC_IDS 
 } from '../constants';
 
-interface BattleLineBoardProps extends BoardProps<GameState> {
-}
-
 type ActiveCardState = {
   card: CardType;
   location: LocationInfo;
 } | null;
 
-export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProps) => {
+export const BattleLineBoard = ({ G, ctx, moves, playerID }: BoardProps<GameState>) => {
   const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
   const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
@@ -46,6 +43,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const opponentID = isInverted ? PLAYER_IDS.P0 : PLAYER_IDS.P1;
   const myID = isInverted ? PLAYER_IDS.P1 : PLAYER_IDS.P0;
   const isMyTurn = ctx.currentPlayer === myID;
+  const actionPerformed = G.actionPerformed;
   const isScoutMode = G.scoutDrawCount !== null;
   const scoutReturnCount = G.scoutReturnCount || 0;
   const activeGuileTactic = G.activeGuileTactic;
@@ -60,6 +58,9 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
 
   const handleCardClick = (card: CardType, location?: LocationInfo) => {
     if (!isMyTurn || isSpectating || !location) return;
+
+    // アクション済みなら操作不可
+    if (actionPerformed && !activeGuileTactic) return;
 
     // --- Special Handling for Deserter (Opponent Card Selection) ---
     if (activeGuileTactic?.name === TACTIC_IDS.DESERTER) {
@@ -79,6 +80,14 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         }
         return;
     }
+
+    // --- Special Handling for Redeploy (Step 1: Own Card Selection) ---
+    if (activeGuileTactic?.name === TACTIC_IDS.REDEPLOY) {
+        if (location.playerId === myID && location.area === AREAS.BOARD) {
+            setActiveCard({ card, location });
+        }
+        return;
+    }
     
     // Normal interaction (prevent selecting opponent cards usually)
     if (location.playerId !== myID && location.area !== AREAS.BOARD && location.area !== AREAS.FIELD) return; // Allow board for logic check, blocked by validation mostly
@@ -94,7 +103,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const handleInfoClick = (card: CardType) => setInfoModalCard(card);
 
   const handleZoneClick = (toLocation: LocationInfo) => {
-    if (!isMyTurn || isSpectating || !activeCard) return;
+    if (!isMyTurn || isSpectating || !activeCard || actionPerformed) return;
 
     // --- Special Handling for Traitor (Step 2: Destination Selection) ---
     if (activeGuileTactic?.name === TACTIC_IDS.TRAITOR) {
@@ -109,6 +118,21 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                  });
                  setActiveCard(null);
              }
+        }
+        return;
+    }
+
+    // --- Special Handling for Redeploy (Step 2: Destination Selection) ---
+    if (activeGuileTactic?.name === TACTIC_IDS.REDEPLOY) {
+        if (activeCard && activeCard.location.area === AREAS.BOARD) {
+            if (toLocation.playerId === myID && toLocation.area === AREAS.BOARD) {
+                moves.resolveRedeploy({
+                    targetCardId: activeCard.card.id,
+                    targetLocation: activeCard.location,
+                    toLocation: toLocation
+                });
+                setActiveCard(null);
+            }
         }
         return;
     }
@@ -164,6 +188,17 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const handleDiscardClick = (type: typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC) => {
       if (activeCard) {
           if (!isMyTurn || isSpectating) return;
+
+          if (activeGuileTactic?.name === TACTIC_IDS.REDEPLOY) {
+              moves.resolveRedeploy({
+                  targetCardId: activeCard.card.id,
+                  targetLocation: activeCard.location,
+                  toLocation: { area: AREAS.DISCARD, deckType: type }
+              });
+              setActiveCard(null);
+              return;
+          }
+
           moves.moveCard({
               cardId: activeCard.card.id,
               from: activeCard.location,
@@ -176,7 +211,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   };
 
   const handleHandClick = () => {
-       if (!isMyTurn || isSpectating || !activeCard) return;
+       if (!isMyTurn || isSpectating || !activeCard || actionPerformed) return;
        // Prevent moving back to hand during Traitor resolution
        if (activeGuileTactic) return;
 
@@ -191,7 +226,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   };
 
   // ターン終了ボタンの有効化条件
-  const canEndTurn = isMyTurn && !activeGuileTactic && (!isScoutMode || (
+  const canEndTurn = isMyTurn && !activeGuileTactic && (actionPerformed || (!isScoutMode && !activeGuileTactic) || (
       isScoutMode && 
       G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && 
       scoutReturnCount === GAME_CONFIG.SCOUT_RETURN_LIMIT
@@ -277,6 +312,8 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             (activeGuileTactic?.name === TACTIC_IDS.TRAITOR)
                         );
 
+                        const isMySlotInteractable = !!(!isSpectating && flag.owner === null && (!isScoutMode || (activeGuileTactic && activeGuileTactic.name !== TACTIC_IDS.SCOUT)));
+
                         return (
                             <div key={flag.id} className="flex flex-col items-center justify-center relative group h-[500px]">
                                 {/* Top Area (Opponent) */}
@@ -331,15 +368,22 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         id={`flag-${i}-${bottomSlotsKey}`}
                                         cards={bottomCards}
                                         type="slot"
-                                        className="h-full justify-start bg-transparent" 
-                                        isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.name === TACTIC_IDS.TRAITOR)}
+                                        className={cn(
+                                            "h-full justify-start bg-transparent",
+                                            activeGuileTactic?.name === TACTIC_IDS.REDEPLOY && "ring-2 ring-amber-500/30",
+                                            activeCard?.location.playerId === myID && activeCard.location.flagIndex === i && activeCard.location.slotType === bottomSlotsKey && "ring-amber-500 ring-4"
+                                        )} 
+                                        isInteractable={isMySlotInteractable}
                                         activeCardId={activeCard?.card.id}
                                         isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && 
                                             (
                                                 // Normal placement logic
                                                 (!activeGuileTactic && (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))) ||
                                                 // Traitor destination logic
-                                                (activeGuileTactic?.name === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID)
+                                                (activeGuileTactic?.name === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID) ||
+                                                // Redeploy destination logic
+                                                (activeGuileTactic?.name === TACTIC_IDS.REDEPLOY && activeCard.location.playerId === myID && 
+                                                    (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name))))
                                             )
                                         }
                                         onCardClick={handleCardClick}
@@ -351,11 +395,22 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         id={`flag-${i}-${bottomTacticSlotsKey}`}
                                         cards={bottomTacticCards}
                                         type="slot"
-                                        className="h-24 min-h-[60px] justify-start bg-transparent scale-90" 
-                                        isInteractable={!isSpectating && flag.owner === null && !isScoutMode && !activeGuileTactic}
+                                        className={cn(
+                                            "h-24 min-h-[60px] justify-start bg-transparent scale-90",
+                                            activeGuileTactic?.name === TACTIC_IDS.REDEPLOY && "ring-2 ring-amber-500/30",
+                                            activeCard?.location.playerId === myID && activeCard.location.flagIndex === i && activeCard.location.slotType === bottomTacticSlotsKey && "ring-amber-500 ring-4"
+                                        )} 
+                                        isInteractable={isMySlotInteractable}
                                         activeCardId={activeCard?.card.id}
-                                        isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && !activeGuileTactic &&
-                                            activeCard.card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(activeCard.card.name)}
+                                        isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && 
+                                            (
+                                                // Normal
+                                                (!activeGuileTactic && activeCard.card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(activeCard.card.name)) ||
+                                                // Redeploy
+                                                (activeGuileTactic?.name === TACTIC_IDS.REDEPLOY && activeCard.location.playerId === myID && 
+                                                    activeCard.card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(activeCard.card.name))
+                                            )
+                                        }
                                         onCardClick={handleCardClick}
                                         onInfoClick={handleInfoClick}
                                         onZoneClick={handleZoneClick}
@@ -396,11 +451,13 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             cards={G.troopDiscard} 
                             onClick={() => handleDiscardClick(DECK_TYPES.TROOP)} 
                             label="Troop"
+                            isTargeted={activeGuileTactic?.name === TACTIC_IDS.REDEPLOY && activeCard?.card.type === CARD_TYPES.TROOP}
                         />
                         <DiscardPile 
                             cards={G.tacticDiscard} 
                             onClick={() => handleDiscardClick(DECK_TYPES.TACTIC)} 
                             label="Tactic"
+                            isTargeted={activeGuileTactic?.name === TACTIC_IDS.REDEPLOY && activeCard?.card.type === CARD_TYPES.TACTIC}
                         />
                     </div>
                 </div>
@@ -425,8 +482,10 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             <Info size={18} />
                             {activeGuileTactic.name === TACTIC_IDS.DESERTER ? (
                                 <span>DESERTER: Select an opponent's card to discard!</span>
-                            ) : (
+                            ) : activeGuileTactic.name === TACTIC_IDS.TRAITOR ? (
                                 <span>TRAITOR: Select opponent's troop &rarr; Place in your slot!</span>
+                            ) : (
+                                <span>REDEPLOY: Move your card or discard it!</span>
                             )}
                             <button 
                                 onClick={() => {
@@ -437,6 +496,14 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             >
                                 <XCircle size={20} />
                             </button>
+                        </div>
+                    )}
+
+                    {/* Action Performed Message */}
+                    {actionPerformed && !activeGuileTactic && isMyTurn && (
+                        <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-50 font-bold border-2 border-amber-400 whitespace-nowrap flex items-center gap-2 animate-pulse">
+                            <CheckCircle2 size={18} />
+                            <span>Action complete! Draw a card to end your turn.</span>
                         </div>
                     )}
 
@@ -470,7 +537,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                         onInfoClick={handleInfoClick}
                         onHandClick={handleHandClick}
                         onSort={() => moves.sortHand()}
-                        className={cn(activeGuileTactic ? "opacity-50 pointer-events-none" : "")}
+                        className={cn((activeGuileTactic || actionPerformed) ? "opacity-50 pointer-events-none" : "")}
                     />
                 </div>
 
