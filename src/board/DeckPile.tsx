@@ -6,11 +6,10 @@ interface DeckPileProps {
   type: 'troop' | 'tactic';
   onClick: () => void;
   isDisabled?: boolean;
-  isReturnTarget?: boolean;
   className?: string;
 }
 
-export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, className }: DeckPileProps) => {
+export const DeckPile = ({ count, type, onClick, isDisabled, className }: DeckPileProps) => {
   // ダミーのカードデータ
   const dummyCard = {
     id: `deck-${type}`,
@@ -18,7 +17,7 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
     faceDown: true,
   };
 
-  const label = isReturnTarget ? 'Return' : `${type === 'troop' ? 'Troop' : 'Tactic'} (${count})`;
+  const label = `${type === 'troop' ? 'Troop' : 'Tactic'} (${count})`;
 
   return (
     <div 
@@ -29,10 +28,7 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
       )}
       onClick={!isDisabled ? onClick : undefined}
     >
-      <div className={cn(
-          "text-[10px] font-bold uppercase tracking-wider transition-colors",
-          isReturnTarget ? "text-amber-400 animate-pulse" : "text-zinc-500"
-      )}>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
         {label}
       </div>
       
@@ -57,7 +53,7 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
                         isInteractable={false}
                         className={cn(
                             "shadow-xl border-zinc-600",
-                            isReturnTarget && "ring-2 ring-amber-500"
+                            !isDisabled && "group-hover:ring-2 group-hover:ring-amber-500/50 transition-all"
                         )}
                      />
                 </div>

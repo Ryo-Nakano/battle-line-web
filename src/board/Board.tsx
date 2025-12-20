@@ -38,7 +38,9 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   // Helper to check if card is a Guile tactic
   const isGuileTactic = (card: CardType) => {
       if (card.type !== 'tactic' || !card.name) return false;
-      const data = TACTICS_DATA[card.name.toLowerCase()];
+      const key = card.name.toLowerCase();
+      // @ts-ignore
+      const data = TACTICS_DATA[key];
       return data?.category === '謀略戦術';
   };
 
@@ -285,14 +287,12 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             type="troop"
                             onClick={() => handleDeckClick('troop')}
                             isDisabled={(!activeCard && G.troopDeck.length === 0) || !isMyTurn || (activeCard !== null && activeCard.card.type !== 'troop')}
-                            isReturnTarget={activeCard?.card.type === 'troop'}
                         />
                         <DeckPile 
                             count={G.tacticDeck.length}
                             type="tactic"
                             onClick={() => handleDeckClick('tactic')}
                             isDisabled={(!activeCard && G.tacticDeck.length === 0) || !isMyTurn || (activeCard !== null && activeCard.card.type !== 'tactic')}
-                            isReturnTarget={activeCard?.card.type === 'tactic'}
                         />
                     </div>
 
@@ -303,13 +303,11 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             cards={G.troopDiscard} 
                             onClick={() => handleDiscardClick('troop')} 
                             label="Troop"
-                            className={activeCard?.card.type === 'troop' ? 'ring-2 ring-red-500' : ''}
                         />
                         <DiscardPile 
                             cards={G.tacticDiscard} 
                             onClick={() => handleDiscardClick('tactic')} 
                             label="Tactic"
-                            className={activeCard?.card.type === 'tactic' ? 'ring-2 ring-red-500' : ''}
                         />
                     </div>
                 </div>
