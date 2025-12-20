@@ -10,7 +10,7 @@ interface CardHelpModalProps {
 export const CardHelpModal = ({ isOpen, onClose, card }: CardHelpModalProps) => {
   if (!isOpen || !card || card.type !== 'tactic' || !card.name) return null;
 
-  const info = (TACTICS_DATA as any)[card.name.toLowerCase()];
+  const info = (TACTICS_DATA as any)[card.name];
   
   // データがない場合のフォールバック
   const title = info?.title || card.name;
