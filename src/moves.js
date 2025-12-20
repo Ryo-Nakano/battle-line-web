@@ -3,7 +3,23 @@ import { isEnvironmentTactic } from './constants/tactics.js';
 
 const INVALID_MOVE = 'INVALID_MOVE';
 
-export const endTurn = ({ events }) => {
+export const endTurn = ({ G, ctx, events }) => {
+  // 謀略戦術エリアのカードを捨て札へ移動
+  ['0', '1'].forEach(pid => {
+      const field = G.tacticsField[pid];
+      while (field.length > 0) {
+          const card = field.pop();
+          if (card.type === 'troop') {
+              G.troopDiscard.push(card);
+          } else {
+              G.tacticDiscard.push(card);
+          }
+      }
+  });
+  
+  // スカウト状態のリセット（念のため）
+  G.scoutDrawCount = null;
+
   events.endTurn();
 };
 
@@ -16,6 +32,14 @@ export const drawCard = ({ G, ctx }, deckType) => {
 
   const card = deck.pop();
   G.players[ctx.currentPlayer].hand.push(card);
+
+  // スカウトモードの処理
+  if (G.scoutDrawCount !== null) {
+      G.scoutDrawCount++;
+      if (G.scoutDrawCount >= 3) {
+          G.scoutDrawCount = null;
+      }
+  }
 };
 
 // 指定された場所を配列として解決するためのヘルパー関数
@@ -33,6 +57,8 @@ const resolveLocation = (G, ctx, location) => {
     return location.deckType === 'troop' ? G.troopDeck : G.tacticDeck;
   } else if (location.area === 'discard') {
     return location.deckType === 'troop' ? G.troopDiscard : G.tacticDiscard;
+  } else if (location.area === 'field') {
+      return G.tacticsField[location.playerId || ctx.currentPlayer];
   }
   return null;
 };
@@ -99,6 +125,9 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
 
     if (card) {
         const isEnv = card.type === 'tactic' && isEnvironmentTactic(card.name);
+        const guileTactics = ['Scout', 'Redeploy', 'Deserter', 'Traitor'];
+        const isGuile = card.type === 'tactic' && card.name && guileTactics.includes(card.name);
+        
         const isTacticSlot = to.slotType === 'p0_tactic_slots' || to.slotType === 'p1_tactic_slots';
 
         if (isTacticSlot) {
@@ -114,9 +143,37 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
                 console.warn(`Cannot place environment tactic to troop slot.`);
                 return INVALID_MOVE;
             }
+            // 謀略戦術も部隊スロットには置けない（専用フィールドへ）
+            if (isGuile) {
+                console.warn(`Cannot place guile tactic to troop slot. Use tactics field.`);
+                return INVALID_MOVE;
+            }
         }
     }
     // 自分の戦術スロットへの配置はOK
+  } else if (to.area === 'field') {
+      // 謀略戦術エリアへの移動
+      // 移動元は手札のみ許可
+      if (from.area !== 'hand') return INVALID_MOVE;
+
+      const sourceList = resolveLocation(G, ctx, from);
+      const card = sourceList?.find(c => c.id === cardId);
+      
+      if (!card) return INVALID_MOVE;
+
+      // 謀略戦術 (Guile) のみ許可
+      const guileTactics = ['Scout', 'Redeploy', 'Deserter', 'Traitor'];
+      // card.name は大文字小文字が混在する可能性があるため、TACTICS_DATAとの整合性を確認すべきだが、
+      // ここでは簡易的に文字列チェックを行う。既存データは先頭大文字。
+      if (!guileTactics.includes(card.name)) {
+          console.warn(`Cannot place non-guile tactic to field.`);
+          return INVALID_MOVE;
+      }
+
+      // スカウトの場合、ドローカウントを初期化
+      if (card.name === 'Scout') {
+          G.scoutDrawCount = 0;
+      }
   } else if (to.area === 'deck') {
       // デッキに戻すのは特殊効果（偵察）のみ
       // 移動元が手札の場合のみ許可する

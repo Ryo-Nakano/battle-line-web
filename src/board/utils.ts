@@ -62,5 +62,11 @@ export function parseLocationId(id: string): LocationInfo | null {
     return { area: 'discard' };
   }
 
+  if (type === 'field') {
+      // id: field-{playerId}
+      if (parts.length < 2) return null;
+      return { area: 'field', playerId: parts[1] };
+  }
+
   return null;
 }

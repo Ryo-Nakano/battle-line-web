@@ -34,6 +34,10 @@ export interface GameState {
   tacticDeck: Card[];
   troopDiscard: Card[];
   tacticDiscard: Card[];
+  tacticsField: {
+      [playerID: string]: Card[];
+  };
+  scoutDrawCount: number | null;
   
   // 公開情報
   flags: FlagState[];
@@ -43,8 +47,8 @@ export interface GameState {
 }
 
 export type LocationInfo = {
-  area: 'hand' | 'board' | 'deck' | 'discard';
-  playerId?: string; // 'hand'の場合のみ
+  area: 'hand' | 'board' | 'deck' | 'discard' | 'field';
+  playerId?: string; // 'hand' or 'field' の場合
   flagIndex?: number;   // 'board'の場合のみ (0-8)
   slotType?: 'p0_slots' | 'p1_slots' | 'p0_tactic_slots' | 'p1_tactic_slots'; // 'board'かつ'flagIndex'がある場合
   deckType?: 'troop' | 'tactic'; // 'deck'の場合

@@ -62,6 +62,8 @@ export const BattleLine = {
       tacticDeck,
       troopDiscard: [],
       tacticDiscard: [],
+      tacticsField: { '0': [], '1': [] },
+      scoutDrawCount: null,
       flags,
     };
   },

@@ -12,7 +12,7 @@ import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
 import { Sword, Shield, Info, CheckCircle2, Menu } from 'lucide-react';
 import { cn } from '../utils';
-import { isEnvironmentTactic } from '../constants/tactics';
+import { isEnvironmentTactic, TACTICS_DATA } from '../constants/tactics';
 
 interface BattleLineBoardProps extends BoardProps<GameState> {
 }
@@ -35,6 +35,13 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const myID = isInverted ? '1' : '0';
   const isMyTurn = ctx.currentPlayer === myID;
 
+  // Helper to check if card is a Guile tactic
+  const isGuileTactic = (card: CardType) => {
+      if (card.type !== 'tactic' || !card.name) return false;
+      const data = TACTICS_DATA[card.name.toLowerCase()];
+      return data?.category === '謀略戦術';
+  };
+
   const handleCardClick = (card: CardType, location?: LocationInfo) => {
     if (!isMyTurn || isSpectating || !location) return;
     if (activeCard && activeCard.card.id === card.id) {
@@ -56,6 +63,24 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         to: toLocation
     });
     setActiveCard(null);
+  };
+
+  const handleTacticsFieldClick = (pid: string) => {
+      if (!isMyTurn || isSpectating || !activeCard) return;
+      if (pid !== myID) return; // 自分のフィールドのみ
+
+      // 手札からのみ移動可能
+      if (activeCard.location.area !== 'hand') return;
+
+      // 謀略戦術のみ
+      if (!isGuileTactic(activeCard.card)) return;
+
+      moves.moveCard({
+          cardId: activeCard.card.id,
+          from: activeCard.location,
+          to: { area: 'field', playerId: pid }
+      });
+      setActiveCard(null);
   };
 
   const handleDeckClick = (deckType: 'troop' | 'tactic') => {
@@ -128,6 +153,20 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             />
                         </div>
                     ))}
+                </div>
+
+                {/* 相手のTactics Field */}
+                <div className="ml-4 flex flex-col gap-1 opacity-80">
+                    <div className="text-[9px] text-zinc-500 font-bold tracking-widest uppercase text-center">Active Tactics</div>
+                    <Zone 
+                        id={`field-${opponentID}`}
+                        cards={G.tacticsField[opponentID]}
+                        type="slot"
+                        className="h-24 min-h-[90px] w-32 border border-zinc-700/50 bg-black/20 rounded-lg justify-center"
+                        orientation="horizontal"
+                        isInteractable={false}
+                        onInfoClick={handleInfoClick}
+                    />
                 </div>
             </div>
 
@@ -207,7 +246,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         isInteractable={!isSpectating && flag.owner === null}
                                         activeCardId={activeCard?.card.id}
                                         isTargeted={!!activeCard && !isSpectating && flag.owner === null && 
-                                            (activeCard.card.type === 'troop' || (activeCard.card.type === 'tactic' && !isEnvironmentTactic(activeCard.card.name)))}
+                                            (activeCard.card.type === 'troop' || (activeCard.card.type === 'tactic' && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))}
                                         onCardClick={handleCardClick}
                                         onInfoClick={handleInfoClick}
                                         onZoneClick={handleZoneClick}
@@ -275,8 +314,37 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     </div>
                 </div>
 
-                {/* Center: Hand */}
-                <div className="flex-1 flex justify-center pb-2">
+                {/* Center: Hand & Tactics Field */}
+                <div className="flex-1 flex flex-col items-center justify-end pb-2 gap-2 relative">
+                    {/* Scout Guide Message */}
+                     {G.scoutDrawCount !== null && (
+                        <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-50 animate-bounce font-bold border-2 border-amber-400 whitespace-nowrap pointer-events-none flex items-center gap-2">
+                            <Info size={18} />
+                            <span>SCOUT ACTIVE: Draw {3 - G.scoutDrawCount} more card(s)!</span>
+                        </div>
+                     )}
+
+                    {/* Tactics Field */}
+                    <div className="flex items-center gap-2 transition-all duration-300">
+                        <div className="text-[10px] text-zinc-600 font-bold tracking-widest uppercase" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Active Tactics</div>
+                        <Zone 
+                            id={`field-${myID}`}
+                            cards={G.tacticsField[myID]}
+                            type="slot"
+                            className={cn(
+                                "h-24 min-h-[90px] w-full min-w-[120px] max-w-xs border rounded-xl px-4 shadow-inner transition-colors",
+                                activeCard?.location.area === 'hand' && isGuileTactic(activeCard.card) 
+                                    ? "border-amber-500/50 bg-amber-500/10" 
+                                    : "border-zinc-700/50 bg-black/40"
+                            )}
+                            orientation="horizontal"
+                            isInteractable={!isSpectating && activeCard?.location.area === 'hand' && isGuileTactic(activeCard.card)}
+                            isTargeted={!!activeCard && activeCard.location.area === 'hand' && isGuileTactic(activeCard.card)}
+                            onZoneClick={() => handleTacticsFieldClick(myID)}
+                            onInfoClick={handleInfoClick}
+                        />
+                    </div>
+
                     <Hand 
                         cards={G.players[myID].hand} 
                         playerId={myID} 
