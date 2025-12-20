@@ -95,7 +95,7 @@ export const cancelGuileTactic = ({ G, ctx }) => {
 
   const playerID = ctx.currentPlayer;
   const field = G.tacticsField[playerID];
-  const cardIndex = field.findIndex(c => c.id === G.activeGuileTactic.cardId);
+  const cardIndex = field.findIndex(c => c.id === G.activeGuileTactic.id);
 
   if (cardIndex !== -1) {
     const card = field.splice(cardIndex, 1)[0];
@@ -112,7 +112,7 @@ export const cancelGuileTactic = ({ G, ctx }) => {
 };
 
 export const resolveDeserter = ({ G, ctx }, { targetCardId, targetLocation }) => {
-  if (!G.activeGuileTactic || G.activeGuileTactic.type !== TACTIC_IDS.DESERTER) return INVALID_MOVE;
+  if (!G.activeGuileTactic || G.activeGuileTactic.name !== TACTIC_IDS.DESERTER) return INVALID_MOVE;
 
   // バリデーション: 相手の未確保フラッグにあるカードか
   const targetList = resolveLocation(G, ctx, targetLocation);
@@ -138,7 +138,7 @@ export const resolveDeserter = ({ G, ctx }, { targetCardId, targetLocation }) =>
 };
 
 export const resolveTraitor = ({ G, ctx }, { targetCardId, targetLocation, toLocation }) => {
-  if (!G.activeGuileTactic || G.activeGuileTactic.type !== TACTIC_IDS.TRAITOR) return INVALID_MOVE;
+  if (!G.activeGuileTactic || G.activeGuileTactic.name !== TACTIC_IDS.TRAITOR) return INVALID_MOVE;
 
   // 1. 対象カードの取得と検証
   const sourceList = resolveLocation(G, ctx, targetLocation);
@@ -352,10 +352,7 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
 
       // 裏切り・脱走の場合、アクティブ状態を設定
       if (card.name === TACTIC_IDS.TRAITOR || card.name === TACTIC_IDS.DESERTER) {
-          G.activeGuileTactic = {
-              type: card.name,
-              cardId: card.id
-          };
+          G.activeGuileTactic = { ...card };
       }
   } else if (to.area === AREAS.DECK) {
       // デッキに戻すのは特殊効果（偵察）のみ
