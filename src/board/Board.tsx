@@ -337,8 +337,8 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     setPendingFlagIndex(null);
                 }
             }}
-            title="Confirm Claim"
-            message="Secure this flag? Once claimed, it cannot be undone."
+            title="フラッグ確保の確認"
+            message="このフラッグを確保しますか？確保後は取り消すことができません。"
         />
 
         {/* Background Grid Decoration */}
