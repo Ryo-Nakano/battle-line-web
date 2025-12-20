@@ -46,8 +46,9 @@ const cleanupTacticsField = (G) => {
       }
   });
   
-  // スカウト状態のリセット（念のため）
+  // スカウト状態のリセット
   G.scoutDrawCount = null;
+  G.scoutReturnCount = null;
 };
 
 export const endTurn = ({ G, ctx, events }) => {
@@ -56,6 +57,11 @@ export const endTurn = ({ G, ctx, events }) => {
 };
 
 export const drawCard = ({ G, ctx }, deckType) => {
+  // スカウトモードのドロー制限チェック
+  if (G.scoutDrawCount !== null && G.scoutDrawCount >= GAME_CONFIG.SCOUT_DRAW_LIMIT) {
+      return;
+  }
+
   const deck = deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
   if (deck.length === 0) {
     return; // デッキが空の場合は何もしない
@@ -67,11 +73,8 @@ export const drawCard = ({ G, ctx }, deckType) => {
   // スカウト(偵察)モードの処理
   if (G.scoutDrawCount !== null) {
       G.scoutDrawCount++;
-      // 3枚引いたらスカウトモード終了 (ここでは簡易的にドロー制限解除のみを行う)
-      // 本来は「2枚戻す」フェーズへの移行が必要だが、仕様に基づき「3枚引ける」までをサポート
-      if (G.scoutDrawCount >= GAME_CONFIG.SCOUT_DRAW_LIMIT) {
-          G.scoutDrawCount = null;
-      }
+      // 3枚引いてもモードは終了しない（カードを戻すフェーズのため）
+      // ターン終了時(cleanupTacticsField)にリセットされる
   }
 };
 
@@ -93,6 +96,16 @@ export const drawAndEndTurn = ({ G, ctx, events }, deckType) => {
 export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
   // --- バリデーション: 操作権限のチェック ---
   const playerID = ctx.currentPlayer;
+
+  // スカウトモード中は、デッキに戻す操作以外（盤面への配置など）を禁止
+  // ただし、スカウトカード自体をフィールドに出す操作（これがモード開始のトリガー）は許可する必要があるため、
+  // G.scoutDrawCount !== null の場合（＝既にモード中）のみ制限する。
+  if (G.scoutDrawCount !== null) {
+      if (to.area !== AREAS.DECK) {
+          console.warn('Cannot perform non-deck moves during Scout mode.');
+          return INVALID_MOVE;
+      }
+  }
 
   // 1. 移動元のチェック (自分の持ち物か？)
   if (from.area === AREAS.HAND) {
@@ -199,6 +212,7 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
       // スカウトの場合、ドローカウントを初期化
       if (card.name === TACTIC_IDS.SCOUT) {
           G.scoutDrawCount = 0;
+          G.scoutReturnCount = 0; // スカウト戻しカウンタ初期化
       }
   } else if (to.area === AREAS.DECK) {
       // デッキに戻すのは特殊効果（偵察）のみ
@@ -206,6 +220,21 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
       if (from.area !== AREAS.HAND) {
           return INVALID_MOVE;
       }
+
+      // スカウトモードでない場合は戻せない (念のため)
+      if (G.scoutReturnCount === null) {
+          return INVALID_MOVE;
+      }
+
+      // 戻せる枚数の制限チェック
+      if (G.scoutReturnCount >= GAME_CONFIG.SCOUT_RETURN_LIMIT) {
+          console.warn('Cannot return more cards than allowed.');
+          return INVALID_MOVE;
+      }
+
+      // カウンタをインクリメント
+      G.scoutReturnCount++;
+
   } else if (to.area === AREAS.DISCARD) {
       // 捨て札タイプが指定されていない場合はエラー
       if (!to.deckType) return INVALID_MOVE;

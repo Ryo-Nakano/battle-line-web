@@ -39,6 +39,7 @@ export interface GameState {
       [playerID: string]: Card[];
   };
   scoutDrawCount: number | null;
+  scoutReturnCount: number | null;
   
   // 公開情報
   flags: FlagState[];

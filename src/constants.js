@@ -62,6 +62,7 @@ export const GAME_CONFIG = {
   FLAG_COUNT: 9,
   SCOUT_DRAW_LIMIT: 3,
   MUD_CARD_REQUIREMENT: 4,
+  SCOUT_RETURN_LIMIT: 2,
 };
 
 /**

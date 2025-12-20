@@ -65,6 +65,7 @@ export const BattleLine = {
       tacticDiscard: [],
       tacticsField: { [PLAYER_IDS.P0]: [], [PLAYER_IDS.P1]: [] },
       scoutDrawCount: null,
+      scoutReturnCount: null,
       flags,
     };
   },

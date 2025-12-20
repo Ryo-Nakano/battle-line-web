@@ -38,6 +38,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
   const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
+  const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
 
   const currentPlayerID = playerID || PLAYER_IDS.P0;
   const isSpectating = playerID === null;
@@ -46,6 +47,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const myID = isInverted ? PLAYER_IDS.P1 : PLAYER_IDS.P0;
   const isMyTurn = ctx.currentPlayer === myID;
   const isScoutMode = G.scoutDrawCount !== null;
+  const scoutReturnCount = G.scoutReturnCount || 0;
 
   // Helper to check if card is a Guile tactic
   const isGuileTactic = (card: CardType) => {
@@ -145,6 +147,13 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
            setActiveCard(null);
        }
   };
+
+  // ターン終了ボタンの有効化条件
+  const canEndTurn = isMyTurn && (!isScoutMode || (
+      isScoutMode && 
+      G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && 
+      scoutReturnCount === GAME_CONFIG.SCOUT_RETURN_LIMIT
+  ));
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black">
@@ -266,9 +275,9 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         cards={bottomCards}
                                         type="slot"
                                         className="h-full justify-start bg-transparent" 
-                                        isInteractable={!isSpectating && flag.owner === null}
+                                        isInteractable={!isSpectating && flag.owner === null && !isScoutMode}
                                         activeCardId={activeCard?.card.id}
-                                        isTargeted={!!activeCard && !isSpectating && flag.owner === null && 
+                                        isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && 
                                             (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))}
                                         onCardClick={handleCardClick}
                                         onInfoClick={handleInfoClick}
@@ -280,9 +289,9 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         cards={bottomTacticCards}
                                         type="slot"
                                         className="h-24 min-h-[60px] justify-start bg-transparent scale-90" 
-                                        isInteractable={!isSpectating && flag.owner === null}
+                                        isInteractable={!isSpectating && flag.owner === null && !isScoutMode}
                                         activeCardId={activeCard?.card.id}
-                                        isTargeted={!!activeCard && !isSpectating && flag.owner === null && 
+                                        isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && 
                                             activeCard.card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(activeCard.card.name)}
                                         onCardClick={handleCardClick}
                                         onInfoClick={handleInfoClick}
@@ -336,10 +345,14 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                 {/* Center: Hand & Tactics Field */}
                 <div className="flex-1 flex flex-col items-center justify-end pb-2 gap-2 relative">
                     {/* Scout Guide Message */}
-                     {G.scoutDrawCount !== null && (
+                     {G.scoutDrawCount !== null && (G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT || scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT) && (
                         <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-50 animate-bounce font-bold border-2 border-amber-400 whitespace-nowrap pointer-events-none flex items-center gap-2">
                             <Info size={18} />
-                            <span>SCOUT ACTIVE: Draw {GAME_CONFIG.SCOUT_DRAW_LIMIT - G.scoutDrawCount} more card(s)!</span>
+                            {G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT ? (
+                                <span>SCOUT ACTIVE: Draw {GAME_CONFIG.SCOUT_DRAW_LIMIT - G.scoutDrawCount} more card(s)!</span>
+                            ) : (
+                                <span>SCOUT ACTIVE: Return {GAME_CONFIG.SCOUT_RETURN_LIMIT - scoutReturnCount} card(s) to deck!</span>
+                            )}
                         </div>
                      )}
 
@@ -380,12 +393,19 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     <button 
                         className={cn(
                             "px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all transform active:scale-95",
-                            isMyTurn 
+                            canEndTurn 
                                 ? "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20" 
                                 : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
                         )}
-                        onClick={() => isMyTurn && setIsDrawModalOpen(true)}
-                        disabled={!isMyTurn}
+                        onClick={() => {
+                            if (!canEndTurn) return;
+                            if (isScoutMode) {
+                                setIsEndTurnConfirmOpen(true);
+                            } else {
+                                setIsDrawModalOpen(true);
+                            }
+                        }}
+                        disabled={!canEndTurn}
                     >
                         <CheckCircle2 size={20} />
                         END TURN
@@ -426,6 +446,16 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
             }}
             title="フラッグ確保の確認"
             message="このフラッグを確保しますか？確保後は取り消すことができません。"
+        />
+        <ConfirmModal
+            isOpen={isEndTurnConfirmOpen}
+            onClose={() => setIsEndTurnConfirmOpen(false)}
+            onConfirm={() => {
+                moves.endTurn();
+                setIsEndTurnConfirmOpen(false);
+            }}
+            title="ターン終了"
+            message="偵察を終了してターンを交代しますか？"
         />
         <DrawSelectionModal
             isOpen={isDrawModalOpen}
