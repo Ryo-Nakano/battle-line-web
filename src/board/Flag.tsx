@@ -1,6 +1,7 @@
 import type { FlagState } from '../types';
 import { cn } from '../utils';
 import { Flag as FlagIcon } from 'lucide-react';
+import { PLAYER_IDS } from '../constants';
 
 interface FlagProps {
   flag: FlagState;
@@ -18,9 +19,9 @@ export function Flag({ flag, onClaim, className, myID }: FlagProps) {
 
   if (isClaimed) {
       // 色の決定 (ID依存)
-      if (flag.owner === '0') {
+      if (flag.owner === PLAYER_IDS.P0) {
           containerStyles = "bg-red-600 ring-2 ring-red-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]";
-      } else if (flag.owner === '1') {
+      } else if (flag.owner === PLAYER_IDS.P1) {
           containerStyles = "bg-blue-600 ring-2 ring-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]";
       }
 

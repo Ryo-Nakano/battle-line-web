@@ -1,6 +1,7 @@
 import type { Card as CardType, LocationInfo } from '../types';
 import { cn } from '../utils';
 import { TACTICS_DATA } from '../constants/tactics';
+import { COLORS, CARD_TYPES } from '../constants';
 import { Shield, Scroll } from 'lucide-react';
 
 interface CardProps {
@@ -14,12 +15,12 @@ interface CardProps {
 }
 
 const colorMap: Record<string, string> = {
-  red: 'bg-red-700 text-red-100 border-red-500',
-  orange: 'bg-orange-600 text-orange-100 border-orange-400',
-  yellow: 'bg-yellow-600 text-yellow-100 border-yellow-400',
-  green: 'bg-green-700 text-green-100 border-green-500',
-  blue: 'bg-blue-700 text-blue-100 border-blue-500',
-  purple: 'bg-purple-700 text-purple-100 border-purple-500',
+  [COLORS.RED]: 'bg-red-700 text-red-100 border-red-500',
+  [COLORS.ORANGE]: 'bg-orange-600 text-orange-100 border-orange-400',
+  [COLORS.YELLOW]: 'bg-yellow-600 text-yellow-100 border-yellow-400',
+  [COLORS.GREEN]: 'bg-green-700 text-green-100 border-green-500',
+  [COLORS.BLUE]: 'bg-blue-700 text-blue-100 border-blue-500',
+  [COLORS.PURPLE]: 'bg-purple-700 text-purple-100 border-purple-500',
 };
 
 export function Card({ card, location, isSelected, onClick, onInfoClick, className, isInteractable = true }: CardProps) {
@@ -35,7 +36,7 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
   
   // 裏向きの場合
   if (card.faceDown) {
-    const isTactic = card.type === 'tactic';
+    const isTactic = card.type === CARD_TYPES.TACTIC;
     const backStyles = isTactic 
         ? "bg-amber-950 border-amber-600 text-amber-500" 
         : "bg-zinc-800 border-zinc-500 text-zinc-300";
@@ -55,8 +56,9 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
   }
 
   // 戦術カード
-  if (card.type === 'tactic') {
-    const tacticInfo = card.name ? (TACTICS_DATA as any)[card.name.toLowerCase()] : null;
+  if (card.type === CARD_TYPES.TACTIC) {
+    // TACTICS_DATA is keyed by Capitalized names (e.g. 'Alexander') matching card.name
+    const tacticInfo = card.name ? (TACTICS_DATA as any)[card.name] : null;
     const displayName = tacticInfo ? tacticInfo.title : card.name;
 
     return (

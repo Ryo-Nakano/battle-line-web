@@ -13,7 +13,16 @@ import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
 import { Sword, Shield, Info, CheckCircle2, Menu } from 'lucide-react';
 import { cn } from '../utils';
-import { isEnvironmentTactic, TACTICS_DATA } from '../constants/tactics';
+import { isEnvironmentTactic } from '../constants/tactics';
+import { 
+  PLAYER_IDS, 
+  CARD_TYPES, 
+  DECK_TYPES, 
+  AREAS, 
+  SLOTS, 
+  GAME_CONFIG, 
+  TACTIC_IDS 
+} from '../constants';
 
 interface BattleLineBoardProps extends BoardProps<GameState> {
 }
@@ -25,26 +34,29 @@ type ActiveCardState = {
 
 export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProps) => {
   const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
-  const [discardModalType, setDiscardModalType] = useState<'troop' | 'tactic' | null>(null);
+  const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
   const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
 
-  const currentPlayerID = playerID || '0';
+  const currentPlayerID = playerID || PLAYER_IDS.P0;
   const isSpectating = playerID === null;
-  const isInverted = currentPlayerID === '1';
-  const opponentID = isInverted ? '0' : '1';
-  const myID = isInverted ? '1' : '0';
+  const isInverted = currentPlayerID === PLAYER_IDS.P1;
+  const opponentID = isInverted ? PLAYER_IDS.P0 : PLAYER_IDS.P1;
+  const myID = isInverted ? PLAYER_IDS.P1 : PLAYER_IDS.P0;
   const isMyTurn = ctx.currentPlayer === myID;
   const isScoutMode = G.scoutDrawCount !== null;
 
   // Helper to check if card is a Guile tactic
   const isGuileTactic = (card: CardType) => {
-      if (card.type !== 'tactic' || !card.name) return false;
-      const key = card.name.toLowerCase();
-      // @ts-ignore
-      const data = TACTICS_DATA[key];
-      return data?.category === '謀略戦術';
+      if (card.type !== CARD_TYPES.TACTIC || !card.name) return false;
+      const key = card.name; // card.name should match TACTIC_IDS values (Capitalized)
+      // We can use isEnvironmentTactic logic but for Guile, or just lookup in constants if possible
+      // But TACTICS_DATA is not imported here. Let's rely on TACTIC_CATEGORIES.
+      // We need to import TACTICS_DATA? Or just hardcode the check since we have TACTIC_IDS?
+      // Since we didn't export TACTICS_DATA from constants.js (it's in tactics.js), we can check names.
+      const guileNames: string[] = [TACTIC_IDS.SCOUT, TACTIC_IDS.REDEPLOY, TACTIC_IDS.DESERTER, TACTIC_IDS.TRAITOR];
+      return guileNames.includes(key);
   };
 
   const handleCardClick = (card: CardType, location?: LocationInfo) => {
@@ -60,7 +72,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
 
   const handleZoneClick = (toLocation: LocationInfo) => {
     if (!isMyTurn || isSpectating || !activeCard) return;
-    if (activeCard.location.area === 'board' && activeCard.location.flagIndex === toLocation.flagIndex && activeCard.location.slotType === toLocation.slotType) return;
+    if (activeCard.location.area === AREAS.BOARD && activeCard.location.flagIndex === toLocation.flagIndex && activeCard.location.slotType === toLocation.slotType) return;
 
     moves.moveCard({
         cardId: activeCard.card.id,
@@ -75,7 +87,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
       if (pid !== myID) return; // 自分のフィールドのみ
 
       // 手札からのみ移動可能
-      if (activeCard.location.area !== 'hand') return;
+      if (activeCard.location.area !== AREAS.HAND) return;
 
       // 謀略戦術のみ
       if (!isGuileTactic(activeCard.card)) return;
@@ -83,12 +95,12 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
       moves.moveCard({
           cardId: activeCard.card.id,
           from: activeCard.location,
-          to: { area: 'field', playerId: pid }
+          to: { area: AREAS.FIELD, playerId: pid }
       });
       setActiveCard(null);
   };
 
-  const handleDeckClick = (deckType: 'troop' | 'tactic') => {
+  const handleDeckClick = (deckType: typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC) => {
       if (!isMyTurn || isSpectating) return;
       
       // スカウトモード中以外はクリック無効
@@ -99,7 +111,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
           moves.moveCard({
               cardId: activeCard.card.id,
               from: activeCard.location,
-              to: { area: 'deck', deckType }
+              to: { area: AREAS.DECK, deckType }
           });
           setActiveCard(null);
       } else {
@@ -108,13 +120,13 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
       }
   };
 
-  const handleDiscardClick = (type: 'troop' | 'tactic') => {
+  const handleDiscardClick = (type: typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC) => {
       if (activeCard) {
           if (!isMyTurn || isSpectating) return;
           moves.moveCard({
               cardId: activeCard.card.id,
               from: activeCard.location,
-              to: { area: 'discard', deckType: type }
+              to: { area: AREAS.DISCARD, deckType: type }
           });
           setActiveCard(null);
       } else {
@@ -124,11 +136,11 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
 
   const handleHandClick = () => {
        if (!isMyTurn || isSpectating || !activeCard) return;
-       if (activeCard.location.area === 'board') {
+       if (activeCard.location.area === AREAS.BOARD) {
            moves.moveCard({
                cardId: activeCard.card.id,
                from: activeCard.location,
-               to: { area: 'hand', playerId: myID }
+               to: { area: AREAS.HAND, playerId: myID }
            });
            setActiveCard(null);
        }
@@ -141,7 +153,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         <header className="flex-none flex justify-between items-start p-4 z-10">
             <div className="flex gap-4 items-center">
                 <div className="bg-zinc-800/80 backdrop-blur-sm p-2 rounded-lg border border-zinc-700 flex items-center gap-3 shadow-lg">
-                    <div className={cn("w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center shadow-inner", opponentID === '0' ? 'bg-red-700' : 'bg-blue-700')}>
+                    <div className={cn("w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center shadow-inner", opponentID === PLAYER_IDS.P0 ? 'bg-red-700' : 'bg-blue-700')}>
                         <Sword size={20} className="text-white/80" />
                     </div>
                     <div>
@@ -198,15 +210,15 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
             <div className="flex justify-center items-center px-8 min-w-max">
                 <div className="grid grid-cols-9 gap-2 sm:gap-4">
                     {G.flags.map((flag, i) => {
-                        const topSlotsKey = isInverted ? 'p0_slots' : 'p1_slots';
-                        const bottomSlotsKey = isInverted ? 'p1_slots' : 'p0_slots';
-                        const topTacticSlotsKey = isInverted ? 'p0_tactic_slots' : 'p1_tactic_slots';
-                        const bottomTacticSlotsKey = isInverted ? 'p1_tactic_slots' : 'p0_tactic_slots';
+                        const topSlotsKey = isInverted ? SLOTS.P0 : SLOTS.P1;
+                        const bottomSlotsKey = isInverted ? SLOTS.P1 : SLOTS.P0;
+                        const topTacticSlotsKey = isInverted ? SLOTS.P0_TACTIC : SLOTS.P1_TACTIC;
+                        const bottomTacticSlotsKey = isInverted ? SLOTS.P1_TACTIC : SLOTS.P0_TACTIC;
                         
-                        const topCards = isInverted ? flag.p0_slots : flag.p1_slots;
-                        const bottomCards = isInverted ? flag.p1_slots : flag.p0_slots;
-                        const topTacticCards = isInverted ? flag.p0_tactic_slots : flag.p1_tactic_slots;
-                        const bottomTacticCards = isInverted ? flag.p1_tactic_slots : flag.p0_tactic_slots;
+                        const topCards = isInverted ? flag[SLOTS.P0] : flag[SLOTS.P1];
+                        const bottomCards = isInverted ? flag[SLOTS.P1] : flag[SLOTS.P0];
+                        const topTacticCards = isInverted ? flag[SLOTS.P0_TACTIC] : flag[SLOTS.P1_TACTIC];
+                        const bottomTacticCards = isInverted ? flag[SLOTS.P1_TACTIC] : flag[SLOTS.P0_TACTIC];
 
                         return (
                             <div key={flag.id} className="flex flex-col items-center justify-center relative group h-[500px]">
@@ -257,7 +269,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         isInteractable={!isSpectating && flag.owner === null}
                                         activeCardId={activeCard?.card.id}
                                         isTargeted={!!activeCard && !isSpectating && flag.owner === null && 
-                                            (activeCard.card.type === 'troop' || (activeCard.card.type === 'tactic' && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))}
+                                            (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))}
                                         onCardClick={handleCardClick}
                                         onInfoClick={handleInfoClick}
                                         onZoneClick={handleZoneClick}
@@ -271,7 +283,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                         isInteractable={!isSpectating && flag.owner === null}
                                         activeCardId={activeCard?.card.id}
                                         isTargeted={!!activeCard && !isSpectating && flag.owner === null && 
-                                            activeCard.card.type === 'tactic' && isEnvironmentTactic(activeCard.card.name)}
+                                            activeCard.card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(activeCard.card.name)}
                                         onCardClick={handleCardClick}
                                         onInfoClick={handleInfoClick}
                                         onZoneClick={handleZoneClick}
@@ -293,14 +305,14 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     <div className="flex gap-4">
                         <DeckPile 
                             count={G.troopDeck.length}
-                            type="troop"
-                            onClick={() => handleDeckClick('troop')}
+                            type={DECK_TYPES.TROOP}
+                            onClick={() => handleDeckClick(DECK_TYPES.TROOP)}
                             isDisabled={!isMyTurn || !isScoutMode}
                         />
                         <DeckPile 
                             count={G.tacticDeck.length}
-                            type="tactic"
-                            onClick={() => handleDeckClick('tactic')}
+                            type={DECK_TYPES.TACTIC}
+                            onClick={() => handleDeckClick(DECK_TYPES.TACTIC)}
                             isDisabled={!isMyTurn || !isScoutMode}
                         />
                     </div>
@@ -310,12 +322,12 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     <div className="flex gap-2">
                         <DiscardPile 
                             cards={G.troopDiscard} 
-                            onClick={() => handleDiscardClick('troop')} 
+                            onClick={() => handleDiscardClick(DECK_TYPES.TROOP)} 
                             label="Troop"
                         />
                         <DiscardPile 
                             cards={G.tacticDiscard} 
-                            onClick={() => handleDiscardClick('tactic')} 
+                            onClick={() => handleDiscardClick(DECK_TYPES.TACTIC)} 
                             label="Tactic"
                         />
                     </div>
@@ -327,7 +339,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                      {G.scoutDrawCount !== null && (
                         <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-50 animate-bounce font-bold border-2 border-amber-400 whitespace-nowrap pointer-events-none flex items-center gap-2">
                             <Info size={18} />
-                            <span>SCOUT ACTIVE: Draw {3 - G.scoutDrawCount} more card(s)!</span>
+                            <span>SCOUT ACTIVE: Draw {GAME_CONFIG.SCOUT_DRAW_LIMIT - G.scoutDrawCount} more card(s)!</span>
                         </div>
                      )}
 
@@ -340,13 +352,13 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             type="slot"
                             className={cn(
                                 "h-24 min-h-[90px] w-full min-w-[120px] max-w-xs border rounded-xl px-4 shadow-inner transition-colors",
-                                activeCard?.location.area === 'hand' && isGuileTactic(activeCard.card) 
+                                activeCard?.location.area === AREAS.HAND && isGuileTactic(activeCard.card) 
                                     ? "border-amber-500/50 bg-amber-500/10" 
                                     : "border-zinc-700/50 bg-black/40"
                             )}
                             orientation="horizontal"
-                            isInteractable={!isSpectating && activeCard?.location.area === 'hand' && isGuileTactic(activeCard.card)}
-                            isTargeted={!!activeCard && activeCard.location.area === 'hand' && isGuileTactic(activeCard.card)}
+                            isInteractable={!isSpectating && activeCard?.location.area === AREAS.HAND && isGuileTactic(activeCard.card)}
+                            isTargeted={!!activeCard && activeCard.location.area === AREAS.HAND && isGuileTactic(activeCard.card)}
                             onZoneClick={() => handleTacticsFieldClick(myID)}
                             onInfoClick={handleInfoClick}
                         />
@@ -380,7 +392,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     </button>
                     
                     <div className="bg-zinc-800/90 p-3 rounded-lg border border-zinc-700 flex items-center gap-3 w-48 shadow-lg">
-                        <div className={cn("w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center", myID === '0' ? 'bg-red-600' : 'bg-blue-600')}>
+                        <div className={cn("w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center", myID === PLAYER_IDS.P0 ? 'bg-red-600' : 'bg-blue-600')}>
                             <Shield size={20} className="text-white" />
                         </div>
                         <div>
@@ -396,7 +408,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
         <DiscardModal 
             isOpen={discardModalType !== null} 
             onClose={() => setDiscardModalType(null)} 
-            cards={discardModalType === 'troop' ? G.troopDiscard : G.tacticDiscard || []} 
+            cards={discardModalType === DECK_TYPES.TROOP ? G.troopDiscard : G.tacticDiscard || []} 
         />
         <CardHelpModal
             isOpen={infoModalCard !== null}

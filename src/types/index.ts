@@ -19,6 +19,7 @@ export interface FlagState {
   p1_slots: Card[];  // Player 1 が配置したカード
   p0_tactic_slots: Card[]; // Player 0 が配置した地形戦術カード
   p1_tactic_slots: Card[]; // Player 1 が配置した地形戦術カード
+  [key: string]: any; // Allow dynamic access for SLOTS constants
 }
 
 export interface PlayerState {

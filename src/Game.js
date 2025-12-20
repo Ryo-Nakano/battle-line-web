@@ -1,39 +1,40 @@
-// src/Game.js
-// import { INVALID_MOVE } from 'boardgame.io/core'; // ESM インポートエラー回避策
+import { 
+  COLORS, 
+  TROOP_VALUES, 
+  TACTIC_IDS, 
+  CARD_TYPES, 
+  PLAYER_IDS, 
+  GAME_CONFIG,
+  SLOTS 
+} from './constants.js';
+import { drawCard, drawAndEndTurn, moveCard, claimFlag, shuffleDeck, endTurn } from './moves.js';
 
 // カード生成関数（内部利用）
 const createTroopDeck = () => {
-  const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
   const deck = [];
-  colors.forEach(color => {
-    for (let i = 1; i <= 10; i++) {
+  Object.values(COLORS).forEach(color => {
+    TROOP_VALUES.forEach(value => {
       deck.push({
-        id: `troop-${color}-${i}`,
-        type: 'troop',
+        id: `${CARD_TYPES.TROOP}-${color}-${value}`,
+        type: CARD_TYPES.TROOP,
         color: color,
-        value: i,
+        value: value,
         faceDown: false
       });
-    }
+    });
   });
   return deck;
 };
 
 const createTacticDeck = () => {
-  const tactics = [
-    'Alexander', 'Darius', 'Companion', 'ShieldBearer', // Leaders
-    'Fog', 'Mud', // Environment
-    'Scout', 'Redeploy', 'Deserter', 'Traitor' // Guile
-  ];
+  const tactics = Object.values(TACTIC_IDS);
   return tactics.map(name => ({
-    id: `tactic-${name.toLowerCase()}`,
-    type: 'tactic',
+    id: `${CARD_TYPES.TACTIC}-${name.toLowerCase()}`,
+    type: CARD_TYPES.TACTIC,
     name: name,
     faceDown: false
   }));
 };
-
-import { drawCard, drawAndEndTurn, moveCard, claimFlag, shuffleDeck, endTurn } from './moves.js';
 
 export const BattleLine = {
   name: 'battle-line',
@@ -43,17 +44,17 @@ export const BattleLine = {
     const tacticDeck = random.Shuffle(createTacticDeck());
     
     const players = {
-      '0': { hand: troopDeck.splice(0, 7) },
-      '1': { hand: troopDeck.splice(0, 7) }
+      [PLAYER_IDS.P0]: { hand: troopDeck.splice(0, GAME_CONFIG.HAND_SIZE) },
+      [PLAYER_IDS.P1]: { hand: troopDeck.splice(0, GAME_CONFIG.HAND_SIZE) }
     };
     
-    const flags = Array(9).fill(null).map((_, i) => ({
+    const flags = Array(GAME_CONFIG.FLAG_COUNT).fill(null).map((_, i) => ({
       id: `flag-${i}`,
       owner: null,
-      p0_slots: [],
-      p1_slots: [],
-      p0_tactic_slots: [],
-      p1_tactic_slots: []
+      [SLOTS.P0]: [],
+      [SLOTS.P1]: [],
+      [SLOTS.P0_TACTIC]: [],
+      [SLOTS.P1_TACTIC]: []
     }));
 
     return {
@@ -62,7 +63,7 @@ export const BattleLine = {
       tacticDeck,
       troopDiscard: [],
       tacticDiscard: [],
-      tacticsField: { '0': [], '1': [] },
+      tacticsField: { [PLAYER_IDS.P0]: [], [PLAYER_IDS.P1]: [] },
       scoutDrawCount: null,
       flags,
     };
@@ -76,6 +77,4 @@ export const BattleLine = {
     shuffleDeck,
     endTurn
   },
-
-  // ターン設定などはデフォルトでOK
 };

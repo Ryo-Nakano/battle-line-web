@@ -1,9 +1,10 @@
 import { Card } from './Card';
 import { cn } from '../utils';
+import type { CardType } from '../types';
 
 interface DeckPileProps {
   count: number;
-  type: 'troop' | 'tactic';
+  type: string;
   onClick: () => void;
   isDisabled?: boolean;
   className?: string;
@@ -13,7 +14,7 @@ export const DeckPile = ({ count, type, onClick, isDisabled, className }: DeckPi
   // ダミーのカードデータ
   const dummyCard = {
     id: `deck-${type}`,
-    type: type,
+    type: type as CardType,
     faceDown: true,
   };
 

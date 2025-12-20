@@ -1,10 +1,11 @@
 import { Sword, Shield, X } from 'lucide-react';
 import { cn } from '../utils';
+import { DECK_TYPES } from '../constants';
 
 interface DrawSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (type: 'troop' | 'tactic') => void;
+  onSelect: (type: typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC) => void;
   troopCount: number;
   tacticCount: number;
 }
@@ -35,7 +36,7 @@ export const DrawSelectionModal = ({ isOpen, onClose, onSelect, troopCount, tact
 
           <div className="grid grid-cols-2 gap-4">
             <button
-              onClick={() => troopCount > 0 && onSelect('troop')}
+              onClick={() => troopCount > 0 && onSelect(DECK_TYPES.TROOP)}
               disabled={troopCount === 0}
               className={cn(
                 "group flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all",
@@ -54,7 +55,7 @@ export const DrawSelectionModal = ({ isOpen, onClose, onSelect, troopCount, tact
             </button>
 
             <button
-              onClick={() => tacticCount > 0 && onSelect('tactic')}
+              onClick={() => tacticCount > 0 && onSelect(DECK_TYPES.TACTIC)}
               disabled={tacticCount === 0}
               className={cn(
                 "group flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all",
