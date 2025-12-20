@@ -27,13 +27,6 @@ export function parseLocationId(id: string): LocationInfo | null {
   
   if (type === 'flag') {
     // id: flag-{index}-{slotType}
-    // slotType は '_' を含む可能性があるため (p0_slots など)、
-    // parts[2] 以降を結合する必要があるが、現状の命名規則では '-' 区切りで分割されている。
-    // 定義上: p0_slots -> parts: ['flag', '0', 'p0_slots'] となるはずだが、
-    // もしハイフン区切りの場合 (p0-slots) は結合が必要。
-    // 今回の計画では "p0_slots" という文字列をそのままIDの一部として使う想定 (例: flag-0-p0_slots)
-    // なので split('-') すると: ['flag', '0', 'p0_slots'] となる。
-    
     if (parts.length < 3) return null;
     
     const index = parseInt(parts[1], 10);
@@ -42,12 +35,6 @@ export function parseLocationId(id: string): LocationInfo | null {
     // parts[2] 以降があれば結合しておく（念のため）
     const slotType = parts.slice(2).join('-'); 
     
-    if (slotType !== 'p0_slots' && slotType !== 'p1_slots' && slotType !== 'p0_tactic_slots' && slotType !== 'p1_tactic_slots') {
-        // もしかするとアンダースコアではなくハイフンで繋がれている可能性を考慮？
-        // 現状は厳密に型定義通り判定する
-        return null;
-    }
-
     return { area: 'board', flagIndex: index, slotType: slotType as any };
   }
 

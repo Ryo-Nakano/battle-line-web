@@ -3,7 +3,28 @@ import { isEnvironmentTactic } from './constants/tactics.js';
 
 const INVALID_MOVE = 'INVALID_MOVE';
 
-export const endTurn = ({ G, ctx, events }) => {
+const resolveLocation = (G, ctx, location) => {
+  if (location.area === 'hand') {
+    return G.players[location.playerId].hand;
+  }
+  if (location.area === 'board') {
+    const flag = G.flags[location.flagIndex];
+    // プロパティアクセスで動的に取得
+    return flag[location.slotType] || null;
+  }
+  if (location.area === 'deck') {
+    return location.deckType === 'troop' ? G.troopDeck : G.tacticDeck;
+  }
+  if (location.area === 'discard') {
+    return location.deckType === 'troop' ? G.troopDiscard : G.tacticDiscard;
+  }
+  if (location.area === 'field') {
+      return G.tacticsField[location.playerId];
+  }
+  return null;
+};
+
+const cleanupTacticsField = (G) => {
   // 謀略戦術エリアのカードを捨て札へ移動
   ['0', '1'].forEach(pid => {
       const field = G.tacticsField[pid];
@@ -19,48 +40,46 @@ export const endTurn = ({ G, ctx, events }) => {
   
   // スカウト状態のリセット（念のため）
   G.scoutDrawCount = null;
+};
 
+export const endTurn = ({ G, ctx, events }) => {
+  cleanupTacticsField(G);
   events.endTurn();
 };
 
 export const drawCard = ({ G, ctx }, deckType) => {
   const deck = deckType === 'troop' ? G.troopDeck : G.tacticDeck;
-  
   if (deck.length === 0) {
-    return INVALID_MOVE;
+    return; // デッキが空の場合は何もしない
   }
 
   const card = deck.pop();
   G.players[ctx.currentPlayer].hand.push(card);
 
-  // スカウトモードの処理
+  // スカウト(偵察)モードの処理
   if (G.scoutDrawCount !== null) {
       G.scoutDrawCount++;
+      // 3枚引いたらスカウトモード終了 (ここでは簡易的にドロー制限解除のみを行う)
+      // 本来は「2枚戻す」フェーズへの移行が必要だが、仕様に基づき「3枚引ける」までをサポート
       if (G.scoutDrawCount >= 3) {
           G.scoutDrawCount = null;
       }
   }
 };
 
-// 指定された場所を配列として解決するためのヘルパー関数
-const resolveLocation = (G, ctx, location) => {
-  if (location.area === 'hand') {
-    return G.players[location.playerId || ctx.currentPlayer].hand;
-  } else if (location.area === 'board') {
-    const flag = G.flags[location.flagIndex];
-    if (!flag) return null;
-    if (location.slotType === 'p0_slots') return flag.p0_slots;
-    if (location.slotType === 'p1_slots') return flag.p1_slots;
-    if (location.slotType === 'p0_tactic_slots') return flag.p0_tactic_slots;
-    if (location.slotType === 'p1_tactic_slots') return flag.p1_tactic_slots;
-  } else if (location.area === 'deck') {
-    return location.deckType === 'troop' ? G.troopDeck : G.tacticDeck;
-  } else if (location.area === 'discard') {
-    return location.deckType === 'troop' ? G.troopDiscard : G.tacticDiscard;
-  } else if (location.area === 'field') {
-      return G.tacticsField[location.playerId || ctx.currentPlayer];
+export const drawAndEndTurn = ({ G, ctx, events }, deckType) => {
+  const deck = deckType === 'troop' ? G.troopDeck : G.tacticDeck;
+  
+  // デッキが空でなければ引く
+  if (deck.length > 0) {
+    const card = deck.pop();
+    G.players[ctx.currentPlayer].hand.push(card);
   }
-  return null;
+  
+  cleanupTacticsField(G);
+
+  // ターン終了
+  events.endTurn();
 };
 
 export const moveCard = ({ G, ctx }, { cardId, from, to }) => {

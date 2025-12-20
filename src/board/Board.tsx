@@ -10,6 +10,7 @@ import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
+import { DrawSelectionModal } from './DrawSelectionModal';
 import { Sword, Shield, Info, CheckCircle2, Menu } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic, TACTICS_DATA } from '../constants/tactics';
@@ -27,6 +28,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const [discardModalType, setDiscardModalType] = useState<'troop' | 'tactic' | null>(null);
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
   const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
+  const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
 
   const currentPlayerID = playerID || '0';
   const isSpectating = playerID === null;
@@ -34,6 +36,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
   const opponentID = isInverted ? '0' : '1';
   const myID = isInverted ? '1' : '0';
   const isMyTurn = ctx.currentPlayer === myID;
+  const isScoutMode = G.scoutDrawCount !== null;
 
   // Helper to check if card is a Guile tactic
   const isGuileTactic = (card: CardType) => {
@@ -87,7 +90,12 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
 
   const handleDeckClick = (deckType: 'troop' | 'tactic') => {
       if (!isMyTurn || isSpectating) return;
+      
+      // スカウトモード中以外はクリック無効
+      if (!isScoutMode) return;
+
       if (activeCard) {
+          // カードを手札からデッキに戻す処理 (スカウトの戻し処理)
           moves.moveCard({
               cardId: activeCard.card.id,
               from: activeCard.location,
@@ -95,6 +103,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
           });
           setActiveCard(null);
       } else {
+          // スカウト中の追加ドロー
           moves.drawCard(deckType);
       }
   };
@@ -286,13 +295,13 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                             count={G.troopDeck.length}
                             type="troop"
                             onClick={() => handleDeckClick('troop')}
-                            isDisabled={(!activeCard && G.troopDeck.length === 0) || !isMyTurn || (activeCard !== null && activeCard.card.type !== 'troop')}
+                            isDisabled={!isMyTurn || !isScoutMode}
                         />
                         <DeckPile 
                             count={G.tacticDeck.length}
                             type="tactic"
                             onClick={() => handleDeckClick('tactic')}
-                            isDisabled={(!activeCard && G.tacticDeck.length === 0) || !isMyTurn || (activeCard !== null && activeCard.card.type !== 'tactic')}
+                            isDisabled={!isMyTurn || !isScoutMode}
                         />
                     </div>
 
@@ -363,7 +372,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                 ? "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20" 
                                 : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
                         )}
-                        onClick={() => isMyTurn && moves.endTurn()}
+                        onClick={() => isMyTurn && setIsDrawModalOpen(true)}
                         disabled={!isMyTurn}
                     >
                         <CheckCircle2 size={20} />
@@ -405,6 +414,16 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
             }}
             title="フラッグ確保の確認"
             message="このフラッグを確保しますか？確保後は取り消すことができません。"
+        />
+        <DrawSelectionModal
+            isOpen={isDrawModalOpen}
+            onClose={() => setIsDrawModalOpen(false)}
+            onSelect={(type) => {
+                moves.drawAndEndTurn(type);
+                setIsDrawModalOpen(false);
+            }}
+            troopCount={G.troopDeck.length}
+            tacticCount={G.tacticDeck.length}
         />
 
         {/* Background Grid Decoration */}
