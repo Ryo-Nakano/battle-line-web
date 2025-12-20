@@ -6,23 +6,32 @@ interface FlagProps {
   flag: FlagState;
   onClaim?: (id: string) => void;
   className?: string;
+  myID: string;
 }
 
-export function Flag({ flag, onClaim, className }: FlagProps) {
+export function Flag({ flag, onClaim, className, myID }: FlagProps) {
   const isClaimed = flag.owner !== null;
   
   // Ownerによる色と位置の決定
-  // Player 0: Red, Translate Up (or Down depending on view, but consistent relative to center)
-  // Player 1: Blue, Translate Down
   let containerStyles = "bg-zinc-800 ring-2 ring-zinc-600 text-zinc-500";
   let translateStyles = "";
 
-  if (flag.owner === '0') {
-      containerStyles = "bg-red-600 ring-2 ring-red-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]";
-      translateStyles = "-translate-y-6"; // Player 0 側へ移動
-  } else if (flag.owner === '1') {
-      containerStyles = "bg-blue-600 ring-2 ring-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]";
-      translateStyles = "translate-y-6"; // Player 1 側へ移動
+  if (isClaimed) {
+      // 色の決定 (ID依存)
+      if (flag.owner === '0') {
+          containerStyles = "bg-red-600 ring-2 ring-red-400 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]";
+      } else if (flag.owner === '1') {
+          containerStyles = "bg-blue-600 ring-2 ring-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]";
+      }
+
+      // 位置の決定 (視点依存)
+      // 自分が確保 -> 手前 (下)
+      // 相手が確保 -> 奥 (上)
+      if (flag.owner === myID) {
+          translateStyles = "translate-y-6";
+      } else {
+          translateStyles = "-translate-y-6";
+      }
   }
 
   return (

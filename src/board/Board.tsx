@@ -180,6 +180,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                                     <div className="absolute w-full h-[1px] bg-zinc-800 -z-10"></div>
                                     <Flag 
                                         flag={flag} 
+                                        myID={myID}
                                         onClaim={(id) => {
                                             const index = parseInt(id.split('-')[1], 10);
                                             if (flag.owner !== null) return;
