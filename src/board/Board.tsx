@@ -4,6 +4,7 @@ import type { GameState, Card as CardType, LocationInfo } from '../types';
 import { Hand } from './Hand';
 import { Zone } from './Zone';
 import { Flag } from './Flag';
+import { Card } from './Card';
 import { DiscardPile } from './DiscardPile';
 import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
@@ -116,10 +117,16 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                     </div>
                 </div>
                 
-                {/* 簡易的な相手の手札表示 (枚数のみ) */}
-                <div className="flex -space-x-2 opacity-70">
-                    {G.players[opponentID].hand.map((_, i) => (
-                        <div key={i} className="w-8 h-12 bg-zinc-800 border border-zinc-600 rounded-sm shadow-sm" />
+                {/* 相手の手札表示 (Cardコンポーネントを使用) */}
+                <div className="flex -space-x-8 opacity-90 h-24 items-start">
+                    {G.players[opponentID].hand.map((card, i) => (
+                        <div key={i} className="transform scale-75 origin-top-left transition-transform hover:scale-90 hover:z-10">
+                            <Card 
+                                card={{ ...card, faceDown: true }} 
+                                isInteractable={false}
+                                className="shadow-lg"
+                            />
+                        </div>
                     ))}
                 </div>
             </div>

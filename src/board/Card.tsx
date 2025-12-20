@@ -37,15 +37,18 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
   if (card.faceDown) {
     const isTactic = card.type === 'tactic';
     const backStyles = isTactic 
-        ? "bg-amber-950 border-amber-700 text-amber-500/30" 
-        : "bg-zinc-800 border-zinc-600 text-zinc-500/30";
+        ? "bg-amber-950 border-amber-600 text-amber-500" 
+        : "bg-zinc-800 border-zinc-500 text-zinc-300";
     
     return (
       <div
         className={cn(baseStyles, backStyles, className)}
       >
-        <div className="w-full h-full border border-white/10 rounded flex items-center justify-center">
+        <div className="w-full h-full border border-white/5 rounded flex flex-col items-center justify-center gap-1">
             {isTactic ? <Scroll size={24} /> : <Shield size={24} />}
+            <span className="text-[8px] sm:text-[10px] font-bold tracking-widest">
+                {isTactic ? "TACTIC" : "TROOP"}
+            </span>
         </div>
       </div>
     );
