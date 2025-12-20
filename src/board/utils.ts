@@ -1,4 +1,5 @@
 import type { LocationInfo } from '../types';
+import { SLOTS, PLAYER_IDS } from '../constants';
 
 /**
  * Droppable/Draggable ID文字列を解析し、LocationInfoオブジェクトに変換する。
@@ -27,13 +28,6 @@ export function parseLocationId(id: string): LocationInfo | null {
   
   if (type === 'flag') {
     // id: flag-{index}-{slotType}
-    // slotType は '_' を含む可能性があるため (p0_slots など)、
-    // parts[2] 以降を結合する必要があるが、現状の命名規則では '-' 区切りで分割されている。
-    // 定義上: p0_slots -> parts: ['flag', '0', 'p0_slots'] となるはずだが、
-    // もしハイフン区切りの場合 (p0-slots) は結合が必要。
-    // 今回の計画では "p0_slots" という文字列をそのままIDの一部として使う想定 (例: flag-0-p0_slots)
-    // なので split('-') すると: ['flag', '0', 'p0_slots'] となる。
-    
     if (parts.length < 3) return null;
     
     const index = parseInt(parts[1], 10);
@@ -42,13 +36,15 @@ export function parseLocationId(id: string): LocationInfo | null {
     // parts[2] 以降があれば結合しておく（念のため）
     const slotType = parts.slice(2).join('-'); 
     
-    if (slotType !== 'p0_slots' && slotType !== 'p1_slots' && slotType !== 'tactic_zone') {
-        // もしかするとアンダースコアではなくハイフンで繋がれている可能性を考慮？
-        // 現状は厳密に型定義通り判定する
-        return null;
+    // スロットタイプからプレイヤーIDを推論
+    let playerId: string | undefined;
+    if (slotType === SLOTS.P0 || slotType === SLOTS.P0_TACTIC) {
+        playerId = PLAYER_IDS.P0;
+    } else if (slotType === SLOTS.P1 || slotType === SLOTS.P1_TACTIC) {
+        playerId = PLAYER_IDS.P1;
     }
-
-    return { area: 'board', flagIndex: index, slotType: slotType as any };
+    
+    return { area: 'board', flagIndex: index, slotType: slotType as any, playerId };
   }
 
   if (type === 'deck') {
@@ -60,6 +56,12 @@ export function parseLocationId(id: string): LocationInfo | null {
   if (type === 'discard') {
     // id: discard
     return { area: 'discard' };
+  }
+
+  if (type === 'field') {
+      // id: field-{playerId}
+      if (parts.length < 2) return null;
+      return { area: 'field', playerId: parts[1] };
   }
 
   return null;

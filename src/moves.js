@@ -1,72 +1,276 @@
-// src/moves.js
+import { isEnvironmentTactic } from './constants/tactics.js';
+import { 
+  AREAS, 
+  PLAYER_IDS, 
+  SLOTS, 
+  DECK_TYPES, 
+  TACTIC_IDS, 
+  GAME_CONFIG, 
+  CARD_TYPES,
+  COLORS
+} from './constants.js';
+
 const INVALID_MOVE = 'INVALID_MOVE';
 
-export const endTurn = ({ events }) => {
+const COLOR_ORDER = Object.values(COLORS);
+
+const resolveLocation = (G, ctx, location) => {
+  if (location.area === AREAS.HAND) {
+    return G.players[location.playerId].hand;
+  }
+  if (location.area === AREAS.BOARD) {
+    const flag = G.flags[location.flagIndex];
+    // プロパティアクセスで動的に取得
+    return flag[location.slotType] || null;
+  }
+  if (location.area === AREAS.DECK) {
+    return location.deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
+  }
+  if (location.area === AREAS.DISCARD) {
+    return location.deckType === DECK_TYPES.TROOP ? G.troopDiscard : G.tacticDiscard;
+  }
+  if (location.area === AREAS.FIELD) {
+      return G.tacticsField[location.playerId];
+  }
+  return null;
+};
+
+const cleanupTacticsField = (G) => {
+  // 謀略戦術エリアのカードを捨て札へ移動
+  [PLAYER_IDS.P0, PLAYER_IDS.P1].forEach(pid => {
+      const field = G.tacticsField[pid];
+      while (field.length > 0) {
+          const card = field.pop();
+          if (card.type === CARD_TYPES.TROOP) {
+              G.troopDiscard.push(card);
+          } else {
+              G.tacticDiscard.push(card);
+          }
+      }
+  });
+  
+  // スカウト状態のリセット
+  G.scoutDrawCount = null;
+  G.scoutReturnCount = null;
+  // 謀略戦術状態のリセット（念のため）
+  G.activeGuileTactic = null;
+};
+
+export const endTurn = ({ G, ctx, events }) => {
+  cleanupTacticsField(G);
   events.endTurn();
 };
 
-export const drawCard = ({ G, ctx }, deckType) => {
-  const deck = deckType === 'troop' ? G.troopDeck : G.tacticDeck;
+export const sortHand = ({ G, ctx }) => {
+  const hand = G.players[ctx.currentPlayer].hand;
+
+  hand.sort((a, b) => {
+    // 1. カードタイプ (Troop優先)
+    if (a.type !== b.type) {
+      return a.type === CARD_TYPES.TROOP ? -1 : 1;
+    }
+
+    // 2. Troopの場合
+    if (a.type === CARD_TYPES.TROOP) {
+      // 色順
+      const colorIndexA = COLOR_ORDER.indexOf(a.color);
+      const colorIndexB = COLOR_ORDER.indexOf(b.color);
+      if (colorIndexA !== colorIndexB) {
+        return colorIndexA - colorIndexB;
+      }
+      // 数値順
+      return a.value - b.value;
+    }
+
+    // 3. Tacticの場合 (名前順)
+    if (a.name && b.name) {
+        return a.name.localeCompare(b.name);
+    }
+    return 0;
+  });
+};
+
+export const cancelGuileTactic = ({ G, ctx }) => {
+  if (!G.activeGuileTactic) return INVALID_MOVE;
+
+  const playerID = ctx.currentPlayer;
+  const field = G.tacticsField[playerID];
+  const cardIndex = field.findIndex(c => c.id === G.activeGuileTactic.cardId);
+
+  if (cardIndex !== -1) {
+    const card = field.splice(cardIndex, 1)[0];
+    G.players[playerID].hand.push(card);
+  }
+
+  G.activeGuileTactic = null;
   
+  // Scout state cleanup if cancelled scout (though unlikely to use this generic cancel for scout)
+  if (G.scoutDrawCount !== null) {
+      G.scoutDrawCount = null;
+      G.scoutReturnCount = null;
+  }
+};
+
+export const resolveDeserter = ({ G, ctx }, { targetCardId, targetLocation }) => {
+  if (!G.activeGuileTactic || G.activeGuileTactic.type !== TACTIC_IDS.DESERTER) return INVALID_MOVE;
+
+  // バリデーション: 相手の未確保フラッグにあるカードか
+  const targetList = resolveLocation(G, ctx, targetLocation);
+  if (!targetList) return INVALID_MOVE;
+
+  const cardIndex = targetList.findIndex(c => c.id === targetCardId);
+  if (cardIndex === -1) return INVALID_MOVE;
+
+  // フラッグ確保済みチェック
+  const flag = G.flags[targetLocation.flagIndex];
+  if (flag.owner !== null) return INVALID_MOVE;
+
+  // 実行: カードを捨て札へ
+  const card = targetList.splice(cardIndex, 1)[0];
+  if (card.type === CARD_TYPES.TROOP) {
+      G.troopDiscard.push(card);
+  } else {
+      G.tacticDiscard.push(card);
+  }
+
+  // 状態クリア
+  G.activeGuileTactic = null;
+};
+
+export const resolveTraitor = ({ G, ctx }, { targetCardId, targetLocation, toLocation }) => {
+  if (!G.activeGuileTactic || G.activeGuileTactic.type !== TACTIC_IDS.TRAITOR) return INVALID_MOVE;
+
+  // 1. 対象カードの取得と検証
+  const sourceList = resolveLocation(G, ctx, targetLocation);
+  if (!sourceList) return INVALID_MOVE;
+
+  const cardIndex = sourceList.findIndex(c => c.id === targetCardId);
+  if (cardIndex === -1) return INVALID_MOVE;
+  
+  const card = sourceList[cardIndex];
+
+  // 裏切りは部隊カードのみ対象
+  if (card.type !== CARD_TYPES.TROOP) return INVALID_MOVE;
+
+  // フラッグ確保済みチェック (移動元)
+  const sourceFlag = G.flags[targetLocation.flagIndex];
+  if (sourceFlag.owner !== null) return INVALID_MOVE;
+
+  // 2. 移動先の検証
+  const destList = resolveLocation(G, ctx, toLocation);
+  if (!destList) return INVALID_MOVE;
+
+  // フラッグ確保済みチェック (移動先)
+  const destFlag = G.flags[toLocation.flagIndex];
+  if (destFlag.owner !== null) return INVALID_MOVE;
+
+  // 自分のスロットかチェック
+  const playerID = ctx.currentPlayer;
+  const isMySlot = (playerID === PLAYER_IDS.P0 && toLocation.slotType === SLOTS.P0) ||
+                   (playerID === PLAYER_IDS.P1 && toLocation.slotType === SLOTS.P1);
+  if (!isMySlot) return INVALID_MOVE;
+
+  // 実行: 移動
+  sourceList.splice(cardIndex, 1);
+  destList.push(card);
+
+  // 状態クリア
+  G.activeGuileTactic = null;
+};
+
+export const drawCard = ({ G, ctx }, deckType) => {
+  // スカウトモードのドロー制限チェック
+  if (G.scoutDrawCount !== null && G.scoutDrawCount >= GAME_CONFIG.SCOUT_DRAW_LIMIT) {
+      return;
+  }
+  // 謀略戦術発動中はドロー不可
+  if (G.activeGuileTactic !== null) {
+      return;
+  }
+
+  const deck = deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
   if (deck.length === 0) {
-    return INVALID_MOVE;
+    return; // デッキが空の場合は何もしない
   }
 
   const card = deck.pop();
   G.players[ctx.currentPlayer].hand.push(card);
+
+  // スカウト(偵察)モードの処理
+  if (G.scoutDrawCount !== null) {
+      G.scoutDrawCount++;
+      // 3枚引いてもモードは終了しない（カードを戻すフェーズのため）
+      // ターン終了時(cleanupTacticsField)にリセットされる
+  }
 };
 
-// 指定された場所を配列として解決するためのヘルパー関数
-const resolveLocation = (G, ctx, location) => {
-  if (location.area === 'hand') {
-    return G.players[location.playerId || ctx.currentPlayer].hand;
-  } else if (location.area === 'board') {
-    const flag = G.flags[location.flagIndex];
-    if (!flag) return null;
-    if (location.slotType === 'p0_slots') return flag.p0_slots;
-    if (location.slotType === 'p1_slots') return flag.p1_slots;
-    if (location.slotType === 'tactic_zone') return flag.tactic_zone;
-  } else if (location.area === 'deck') {
-    return location.deckType === 'troop' ? G.troopDeck : G.tacticDeck;
-  } else if (location.area === 'discard') {
-    return location.deckType === 'troop' ? G.troopDiscard : G.tacticDiscard;
+export const drawAndEndTurn = ({ G, ctx, events }, deckType) => {
+  // 謀略戦術発動中は終了不可
+  if (G.activeGuileTactic !== null) return;
+
+  const deck = deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
+  
+  // デッキが空でなければ引く
+  if (deck.length > 0) {
+    const card = deck.pop();
+    G.players[ctx.currentPlayer].hand.push(card);
   }
-  return null;
+  
+  cleanupTacticsField(G);
+
+  // ターン終了
+  events.endTurn();
 };
 
 export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
   // --- バリデーション: 操作権限のチェック ---
   const playerID = ctx.currentPlayer;
 
+  // 謀略戦術発動中は、キャンセル以外の移動操作を禁止
+  if (G.activeGuileTactic !== null) {
+      console.warn('Cannot perform standard moves while resolving Guile tactic.');
+      return INVALID_MOVE;
+  }
+
+  // スカウトモード中は、デッキに戻す操作以外（盤面への配置など）を禁止
+  // ただし、スカウトカード自体をフィールドに出す操作（これがモード開始のトリガー）は許可する必要があるため、
+  // G.scoutDrawCount !== null の場合（＝既にモード中）のみ制限する。
+  if (G.scoutDrawCount !== null) {
+      if (to.area !== AREAS.DECK) {
+          console.warn('Cannot perform non-deck moves during Scout mode.');
+          return INVALID_MOVE;
+      }
+  }
+
   // 1. 移動元のチェック (自分の持ち物か？)
-  if (from.area === 'hand') {
+  if (from.area === AREAS.HAND) {
     if (from.playerId !== playerID) {
       console.warn(`Cannot move opponent's hand card. Player: ${playerID}, Target: ${from.playerId}`);
       return INVALID_MOVE;
     }
-  } else if (from.area === 'board') {
-    // 自分のスロット (p0_slots/p1_slots) か確認
-    // tactic_zone にあるカードは移動できるか？ -> 一度置いたら移動不可が基本ルールだが、
-    // 実装段階では「操作性」優先で動かせても良いかもしれない。
-    // ただし「相手のスロット」にあるカードは絶対に動かせない。
-    const isMySlot = (playerID === '0' && from.slotType === 'p0_slots') ||
-                     (playerID === '1' && from.slotType === 'p1_slots');
-    // 戦術カードが共通ゾーンにある場合、それを動かせるのは誰か？
-    // 通常は再配置系のカード効果以外では動かせない。
-    // ここでは「自分のスロット」以外からの移動を禁止する（戦術ゾーンからの移動も一旦禁止）。
+  } else if (from.area === AREAS.BOARD) {
+    // --- フラッグ確保済みチェック (移動元) ---
+    const flag = G.flags[from.flagIndex];
+    if (flag && flag.owner !== null) {
+        console.warn(`Cannot move card from claimed flag ${from.flagIndex}`);
+        return INVALID_MOVE;
+    }
+
+    // 自分のスロットか確認
+    // 部隊スロット または 戦術スロット
+    const isMySlot = (playerID === PLAYER_IDS.P0 && (from.slotType === SLOTS.P0 || from.slotType === SLOTS.P0_TACTIC)) ||
+                     (playerID === PLAYER_IDS.P1 && (from.slotType === SLOTS.P1 || from.slotType === SLOTS.P1_TACTIC));
+    
     if (!isMySlot) {
-       // ただし、もし「自分のスロット」から「自分のスロット」への移動機能を作るならOKだが、
-       // ここでは「相手のスロット」を触ろうとしたら弾く。
-       const isOpponentSlot = (playerID === '0' && from.slotType === 'p1_slots') ||
-                              (playerID === '1' && from.slotType === 'p0_slots');
-       if (isOpponentSlot) return INVALID_MOVE;
+       // 相手のスロットを触ろうとしたら弾く
+       return INVALID_MOVE;
     }
   }
 
   // 2. 移動先のチェック (自分の陣地か？)
-  if (to.area === 'hand') {
+  if (to.area === AREAS.HAND) {
     // 盤面から手札に戻すことを許可（再配置やミスクリック修正のため）
-    if (from.area !== 'board') {
+    if (from.area !== AREAS.BOARD) {
         // デッキや捨て札からは戻せない
         return INVALID_MOVE;
     }
@@ -74,22 +278,107 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
     if (to.playerId && to.playerId !== playerID) {
         return INVALID_MOVE;
     }
-  } else if (to.area === 'board') {
+  } else if (to.area === AREAS.BOARD) {
+    // --- フラッグ確保済みチェック (移動先) ---
+    const flag = G.flags[to.flagIndex];
+    if (flag && flag.owner !== null) {
+        console.warn(`Cannot move card to claimed flag ${to.flagIndex}`);
+        return INVALID_MOVE;
+    }
+
     // 相手のスロットには置けない
-    const isOpponentSlot = (playerID === '0' && to.slotType === 'p1_slots') ||
-                           (playerID === '1' && to.slotType === 'p0_slots');
+    const isOpponentSlot = (playerID === PLAYER_IDS.P0 && (to.slotType === SLOTS.P1 || to.slotType === SLOTS.P1_TACTIC)) ||
+                           (playerID === PLAYER_IDS.P1 && (to.slotType === SLOTS.P0 || to.slotType === SLOTS.P0_TACTIC));
     if (isOpponentSlot) {
       console.warn(`Cannot place card in opponent's slot.`);
       return INVALID_MOVE;
     }
-    // 戦術ゾーン (tactic_zone) への配置はOK（環境カード）
-  } else if (to.area === 'deck') {
-      // デッキに戻すのは特殊効果（偵察）のみ
-      // 移動元が手札の場合のみ許可する
-      if (from.area !== 'hand') {
+
+    // --- 戦術カードの種類による配置制限 ---
+    const sourceList = resolveLocation(G, ctx, from);
+    const card = sourceList?.find(c => c.id === cardId);
+
+    if (card) {
+        const isEnv = card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(card.name);
+        const guileTactics = [TACTIC_IDS.SCOUT, TACTIC_IDS.REDEPLOY, TACTIC_IDS.DESERTER, TACTIC_IDS.TRAITOR];
+        const isGuile = card.type === CARD_TYPES.TACTIC && card.name && guileTactics.includes(card.name);
+        
+        const isTacticSlot = to.slotType === SLOTS.P0_TACTIC || to.slotType === SLOTS.P1_TACTIC;
+
+        if (isTacticSlot) {
+            // 戦術スロットには地形戦術のみ配置可能
+            if (!isEnv) {
+                console.warn(`Cannot place non-environment card to tactic slot.`);
+                return INVALID_MOVE;
+            }
+        } else {
+            // 部隊スロットには部隊カード または 地形戦術以外の戦術カードのみ配置可能
+            // (= 地形戦術は部隊スロットに置けない)
+            if (isEnv) {
+                console.warn(`Cannot place environment tactic to troop slot.`);
+                return INVALID_MOVE;
+            }
+            // 謀略戦術も部隊スロットには置けない（専用フィールドへ）
+            if (isGuile) {
+                console.warn(`Cannot place guile tactic to troop slot. Use tactics field.`);
+                return INVALID_MOVE;
+            }
+        }
+    }
+    // 自分の戦術スロットへの配置はOK
+  } else if (to.area === AREAS.FIELD) {
+      // 謀略戦術エリアへの移動
+      // 移動元は手札のみ許可
+      if (from.area !== AREAS.HAND) return INVALID_MOVE;
+
+      const sourceList = resolveLocation(G, ctx, from);
+      const card = sourceList?.find(c => c.id === cardId);
+      
+      if (!card) return INVALID_MOVE;
+
+      // 謀略戦術 (Guile) のみ許可
+      const guileTactics = [TACTIC_IDS.SCOUT, TACTIC_IDS.REDEPLOY, TACTIC_IDS.DESERTER, TACTIC_IDS.TRAITOR];
+      
+      if (!guileTactics.includes(card.name)) {
+          console.warn(`Cannot place non-guile tactic to field.`);
           return INVALID_MOVE;
       }
-  } else if (to.area === 'discard') {
+
+      // スカウトの場合、ドローカウントを初期化
+      if (card.name === TACTIC_IDS.SCOUT) {
+          G.scoutDrawCount = 0;
+          G.scoutReturnCount = 0; // スカウト戻しカウンタ初期化
+      }
+
+      // 裏切り・脱走の場合、アクティブ状態を設定
+      if (card.name === TACTIC_IDS.TRAITOR || card.name === TACTIC_IDS.DESERTER) {
+          G.activeGuileTactic = {
+              type: card.name,
+              cardId: card.id
+          };
+      }
+  } else if (to.area === AREAS.DECK) {
+      // デッキに戻すのは特殊効果（偵察）のみ
+      // 移動元が手札の場合のみ許可する
+      if (from.area !== AREAS.HAND) {
+          return INVALID_MOVE;
+      }
+
+      // スカウトモードでない場合は戻せない (念のため)
+      if (G.scoutReturnCount === null) {
+          return INVALID_MOVE;
+      }
+
+      // 戻せる枚数の制限チェック
+      if (G.scoutReturnCount >= GAME_CONFIG.SCOUT_RETURN_LIMIT) {
+          console.warn('Cannot return more cards than allowed.');
+          return INVALID_MOVE;
+      }
+
+      // カウンタをインクリメント
+      G.scoutReturnCount++;
+
+  } else if (to.area === AREAS.DISCARD) {
       // 捨て札タイプが指定されていない場合はエラー
       if (!to.deckType) return INVALID_MOVE;
   }
@@ -112,7 +401,7 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
   const card = sourceList[cardIndex];
 
   // 捨て札への移動の場合、カードタイプとパイルタイプの一致を確認
-  if (to.area === 'discard') {
+  if (to.area === AREAS.DISCARD) {
       if (card.type !== to.deckType) {
           console.warn(`Type mismatch: Cannot discard ${card.type} card to ${to.deckType} pile.`);
           return INVALID_MOVE;
@@ -120,7 +409,7 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
   }
 
   // デッキへの移動の場合もタイプ一致を確認
-  if (to.area === 'deck') {
+  if (to.area === AREAS.DECK) {
       if (card.type !== to.deckType) {
           console.warn(`Type mismatch: Cannot return ${card.type} card to ${to.deckType} deck.`);
           return INVALID_MOVE;
@@ -147,14 +436,14 @@ export const claimFlag = ({ G, ctx }, flagIndex) => {
 };
 
 export const shuffleDeck = ({ G, random }, deckType) => {
-  const deck = deckType === 'troop' ? G.troopDeck : G.tacticDeck;
+  const deck = deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
   
   // boardgame.io の random ラッパーを使用
   // G は変更可能だが、シャッフルされた配列を再代入するか、直接変更する必要がある。
   // random.Shuffle は新しい配列を返す。
   const shuffled = random.Shuffle(deck);
   
-  if (deckType === 'troop') {
+  if (deckType === DECK_TYPES.TROOP) {
     G.troopDeck = shuffled;
   } else {
     G.tacticDeck = shuffled;

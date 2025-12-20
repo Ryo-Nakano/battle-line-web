@@ -23,11 +23,19 @@ describe('parseLocationId', () => {
     });
   });
 
-  it('should parse board slot ID (tactic_zone)', () => {
-    expect(parseLocationId('flag-4-tactic_zone')).toEqual({
+  it('should parse board slot ID (p0_tactic_slots)', () => {
+    expect(parseLocationId('flag-4-p0_tactic_slots')).toEqual({
       area: 'board',
       flagIndex: 4,
-      slotType: 'tactic_zone'
+      slotType: 'p0_tactic_slots'
+    });
+  });
+
+  it('should parse board slot ID (p1_tactic_slots)', () => {
+    expect(parseLocationId('flag-4-p1_tactic_slots')).toEqual({
+      area: 'board',
+      flagIndex: 4,
+      slotType: 'p1_tactic_slots'
     });
   });
 
