@@ -1,4 +1,5 @@
 import type { LocationInfo } from '../types';
+import { SLOTS, PLAYER_IDS } from '../constants';
 
 /**
  * Droppable/Draggable ID文字列を解析し、LocationInfoオブジェクトに変換する。
@@ -35,7 +36,15 @@ export function parseLocationId(id: string): LocationInfo | null {
     // parts[2] 以降があれば結合しておく（念のため）
     const slotType = parts.slice(2).join('-'); 
     
-    return { area: 'board', flagIndex: index, slotType: slotType as any };
+    // スロットタイプからプレイヤーIDを推論
+    let playerId: string | undefined;
+    if (slotType === SLOTS.P0 || slotType === SLOTS.P0_TACTIC) {
+        playerId = PLAYER_IDS.P0;
+    } else if (slotType === SLOTS.P1 || slotType === SLOTS.P1_TACTIC) {
+        playerId = PLAYER_IDS.P1;
+    }
+    
+    return { area: 'board', flagIndex: index, slotType: slotType as any, playerId };
   }
 
   if (type === 'deck') {

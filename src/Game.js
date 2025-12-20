@@ -7,7 +7,18 @@ import {
   GAME_CONFIG,
   SLOTS 
 } from './constants.js';
-import { drawCard, drawAndEndTurn, moveCard, claimFlag, shuffleDeck, endTurn, sortHand } from './moves.js';
+import { 
+  drawCard, 
+  drawAndEndTurn, 
+  moveCard, 
+  claimFlag, 
+  shuffleDeck, 
+  endTurn, 
+  sortHand,
+  resolveDeserter,
+  resolveTraitor,
+  cancelGuileTactic
+} from './moves.js';
 
 // カード生成関数（内部利用）
 const createTroopDeck = () => {
@@ -66,6 +77,7 @@ export const BattleLine = {
       tacticsField: { [PLAYER_IDS.P0]: [], [PLAYER_IDS.P1]: [] },
       scoutDrawCount: null,
       scoutReturnCount: null,
+      activeGuileTactic: null,
       flags,
     };
   },
@@ -77,6 +89,9 @@ export const BattleLine = {
     claimFlag,
     shuffleDeck,
     endTurn,
-    sortHand
+    sortHand,
+    resolveDeserter,
+    resolveTraitor,
+    cancelGuileTactic
   },
 };
