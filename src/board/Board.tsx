@@ -385,6 +385,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
                         onCardClick={handleCardClick}
                         onInfoClick={handleInfoClick}
                         onHandClick={handleHandClick}
+                        onSort={() => moves.sortHand()}
                     />
                 </div>
 

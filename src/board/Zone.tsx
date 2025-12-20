@@ -3,6 +3,7 @@ import { Card } from './Card';
 import { cn } from '../utils';
 import { parseLocationId } from './utils';
 import type { ReactNode } from 'react';
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 
 interface ZoneProps {
   id: string;
@@ -34,8 +35,8 @@ export function Zone({
   onZoneClick
 }: ZoneProps) {
   const isSlot = type === 'slot';
-  
   const location = parseLocationId(id) || undefined;
+  const [parent] = useAutoAnimate();
   
   const handleZoneClick = () => {
     if (!isInteractable || !onZoneClick || !location) return;
@@ -44,6 +45,7 @@ export function Zone({
 
   return (
     <div
+      ref={parent}
       onClick={handleZoneClick}
       className={cn(
         "relative transition-all duration-300 rounded-xl p-1 sm:p-2",

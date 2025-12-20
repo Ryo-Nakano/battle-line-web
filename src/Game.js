@@ -7,7 +7,7 @@ import {
   GAME_CONFIG,
   SLOTS 
 } from './constants.js';
-import { drawCard, drawAndEndTurn, moveCard, claimFlag, shuffleDeck, endTurn } from './moves.js';
+import { drawCard, drawAndEndTurn, moveCard, claimFlag, shuffleDeck, endTurn, sortHand } from './moves.js';
 
 // カード生成関数（内部利用）
 const createTroopDeck = () => {
@@ -76,6 +76,7 @@ export const BattleLine = {
     moveCard,
     claimFlag,
     shuffleDeck,
-    endTurn
+    endTurn,
+    sortHand
   },
 };

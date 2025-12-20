@@ -6,10 +6,13 @@ import {
   DECK_TYPES, 
   TACTIC_IDS, 
   GAME_CONFIG, 
-  CARD_TYPES 
+  CARD_TYPES,
+  COLORS
 } from './constants.js';
 
 const INVALID_MOVE = 'INVALID_MOVE';
+
+const COLOR_ORDER = Object.values(COLORS);
 
 const resolveLocation = (G, ctx, location) => {
   if (location.area === AREAS.HAND) {
@@ -54,6 +57,35 @@ const cleanupTacticsField = (G) => {
 export const endTurn = ({ G, ctx, events }) => {
   cleanupTacticsField(G);
   events.endTurn();
+};
+
+export const sortHand = ({ G, ctx }) => {
+  const hand = G.players[ctx.currentPlayer].hand;
+
+  hand.sort((a, b) => {
+    // 1. カードタイプ (Troop優先)
+    if (a.type !== b.type) {
+      return a.type === CARD_TYPES.TROOP ? -1 : 1;
+    }
+
+    // 2. Troopの場合
+    if (a.type === CARD_TYPES.TROOP) {
+      // 色順
+      const colorIndexA = COLOR_ORDER.indexOf(a.color);
+      const colorIndexB = COLOR_ORDER.indexOf(b.color);
+      if (colorIndexA !== colorIndexB) {
+        return colorIndexA - colorIndexB;
+      }
+      // 数値順
+      return a.value - b.value;
+    }
+
+    // 3. Tacticの場合 (名前順)
+    if (a.name && b.name) {
+        return a.name.localeCompare(b.name);
+    }
+    return 0;
+  });
 };
 
 export const drawCard = ({ G, ctx }, deckType) => {
