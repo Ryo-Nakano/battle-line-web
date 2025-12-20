@@ -1,104 +1,119 @@
 import type { Card as CardType, LocationInfo } from '../types';
 import { cn } from '../utils';
 import { TACTICS_DATA } from '../constants/tactics';
+import { Shield, Scroll } from 'lucide-react';
 
 interface CardProps {
   card: CardType;
-  location?: LocationInfo; // カードの現在の場所（移動元特定用）
+  location?: LocationInfo;
   isSelected?: boolean;
   onClick?: (card: CardType, location?: LocationInfo) => void;
   onInfoClick?: (card: CardType) => void;
   className?: string;
-  isInteractable?: boolean; // クリック可能かどうか
+  isInteractable?: boolean;
 }
 
 const colorMap: Record<string, string> = {
-  red: 'border-red-500 text-red-600 bg-red-50',
-  orange: 'border-orange-500 text-orange-600 bg-orange-50',
-  yellow: 'border-yellow-500 text-yellow-600 bg-yellow-50',
-  green: 'border-green-500 text-green-600 bg-green-50',
-  blue: 'border-blue-500 text-blue-600 bg-blue-50',
-  purple: 'border-purple-500 text-purple-600 bg-purple-50',
+  red: 'bg-red-700 text-red-100 border-red-500',
+  orange: 'bg-orange-600 text-orange-100 border-orange-400',
+  yellow: 'bg-yellow-600 text-yellow-100 border-yellow-400',
+  green: 'bg-green-700 text-green-100 border-green-500',
+  blue: 'bg-blue-700 text-blue-100 border-blue-500',
+  purple: 'bg-purple-700 text-purple-100 border-purple-500',
 };
 
 export function Card({ card, location, isSelected, onClick, onInfoClick, className, isInteractable = true }: CardProps) {
   
   const handleClick = (e: React.MouseEvent) => {
     if (!isInteractable || !onClick) return;
-    e.stopPropagation(); // Zoneのクリックイベント発火を防ぐ
+    e.stopPropagation();
     onClick(card, location);
   };
 
-  const baseStyles = "w-14 h-20 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-lg border-2 flex items-center justify-center font-bold text-lg md:text-xl shadow-sm select-none transition-transform transition-colors box-border";
+  // 共通のベーススタイル（縦長長方形 1:1.4）
+  const baseStyles = "relative w-16 h-24 sm:w-20 sm:h-28 rounded-lg shadow-md transition-all duration-200 flex flex-col items-center justify-between p-2 select-none box-border border-2";
   
   // 裏向きの場合
   if (card.faceDown) {
     const isTactic = card.type === 'tactic';
     const backStyles = isTactic 
-        ? "bg-amber-900 border-amber-700 text-amber-200/50" 
-        : "bg-slate-700 border-slate-600 text-slate-400/50";
+        ? "bg-amber-950 border-amber-700 text-amber-500/30" 
+        : "bg-zinc-800 border-zinc-600 text-zinc-500/30";
     
     return (
       <div
-        className={cn(
-            baseStyles, 
-            backStyles,
-            className
-        )}
+        className={cn(baseStyles, backStyles, className)}
       >
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest rotate-45">
-            {isTactic ? 'TACTIC' : 'TROOP'}
-        </span>
+        <div className="w-full h-full border border-white/10 rounded flex items-center justify-center">
+            {isTactic ? <Scroll size={24} /> : <Shield size={24} />}
+        </div>
       </div>
     );
   }
 
-  // 表向きの場合: カードタイプに応じたスタイル
-  let specificStyles = "bg-white border-gray-300 text-gray-800";
-  let content: React.ReactNode = null;
-
-  if (card.type === 'troop' && card.color) {
-    specificStyles = colorMap[card.color] || specificStyles;
-    content = card.value;
-  } else if (card.type === 'tactic') {
-    specificStyles = "bg-gray-100 border-gray-400 text-gray-700 text-xs text-center px-1 break-words leading-tight relative";
-    
-    const tacticInfo = card.name ? TACTICS_DATA[card.name.toLowerCase()] : null;
+  // 戦術カード
+  if (card.type === 'tactic') {
+    const tacticInfo = card.name ? (TACTICS_DATA as any)[card.name.toLowerCase()] : null;
     const displayName = tacticInfo ? tacticInfo.title : card.name;
 
-    content = (
-        <>
-            {displayName}
-            {onInfoClick && (
-                <button
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-amber-600 text-white rounded-full flex items-center justify-center text-[10px] font-serif hover:bg-amber-500 shadow-sm z-20"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onInfoClick(card);
-                    }}
-                >
-                    i
-                </button>
-            )}
-        </>
+    return (
+      <div
+        onClick={handleClick}
+        className={cn(
+            baseStyles,
+            "bg-zinc-800 border-amber-500 text-amber-100",
+            isInteractable && "cursor-pointer hover:-translate-y-2",
+            isSelected && "-translate-y-4 ring-4 ring-amber-400/50 shadow-2xl z-50",
+            !isInteractable && "cursor-default opacity-90",
+            className
+        )}
+      >
+         <div className="w-full text-center text-[10px] sm:text-xs font-bold leading-tight z-10 break-words line-clamp-2">
+             {displayName}
+         </div>
+         <div className="text-amber-500/80">
+             <Scroll size={32} />
+         </div>
+         {onInfoClick && (
+            <button
+                className="absolute top-1 right-1 w-4 h-4 bg-amber-600/50 hover:bg-amber-600 text-white rounded-full flex items-center justify-center text-[10px] font-serif transition-colors z-20"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onInfoClick(card);
+                }}
+            >
+                i
+            </button>
+         )}
+         {/* 装飾 */}
+         <div className="absolute inset-1 border border-amber-500/20 rounded pointer-events-none"></div>
+      </div>
     );
   }
 
+  // 部隊カード
+  const specificStyles = card.color ? (colorMap[card.color] || 'bg-zinc-700') : 'bg-zinc-700';
+  
   return (
     <div
       onClick={handleClick}
       className={cn(
         baseStyles,
         specificStyles,
-        // インタラクションスタイル
-        isInteractable && "cursor-pointer hover:-translate-y-1 hover:shadow-md",
+        isInteractable && "cursor-pointer hover:-translate-y-2",
+        isSelected && "-translate-y-4 ring-4 ring-white/50 shadow-2xl z-50",
         !isInteractable && "cursor-default",
-        // 選択状態スタイル
-        isSelected && "ring-4 ring-blue-500 -translate-y-2 shadow-lg z-10",
         className
       )}
     >
-      {content}
+      <div className="w-full text-left font-bold text-lg leading-none">{card.value}</div>
+      <div className="text-white/20">
+          <Shield size={40} strokeWidth={1.5} />
+      </div>
+      <div className="w-full text-right font-bold text-lg leading-none rotate-180">{card.value}</div>
+      
+      {/* 装飾用ライン */}
+      <div className="absolute inset-1 border border-white/20 rounded-md pointer-events-none"></div>
     </div>
   );
 }

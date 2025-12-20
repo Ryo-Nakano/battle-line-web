@@ -1,12 +1,4 @@
-export type TacticCategory = '士気高揚戦術' | '地形戦術' | '謀略戦術';
-
-export interface TacticInfo {
-  title: string;
-  category: TacticCategory;
-  description: string;
-}
-
-export const TACTICS_DATA: Record<string, TacticInfo> = {
+export const TACTICS_DATA = {
   'alexander': {
     title: 'アレキサンダー',
     category: '士気高揚戦術',
@@ -57,4 +49,10 @@ export const TACTICS_DATA: Record<string, TacticInfo> = {
     category: '謀略戦術',
     description: '相手の配置済みの部隊カード（未確保フラッグにあるもの）を1枚選び、自分の空きスロットに移動する。'
   }
+};
+
+export const isEnvironmentTactic = (cardName) => {
+  if (!cardName) return false;
+  const data = TACTICS_DATA[cardName.toLowerCase()];
+  return data?.category === '地形戦術';
 };

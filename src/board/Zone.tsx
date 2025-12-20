@@ -11,8 +11,9 @@ interface ZoneProps {
   children?: ReactNode;
   orientation?: 'horizontal' | 'vertical';
   className?: string;
-  isInteractable?: boolean; // クリック可能か（カード選択や配置先指定）
-  activeCardId?: string; // 選択中のカードID（ハイライト用）
+  isInteractable?: boolean;
+  activeCardId?: string;
+  isTargeted?: boolean; // 配置候補としてハイライトするか
   onCardClick?: (card: CardType, location?: LocationInfo) => void;
   onInfoClick?: (card: CardType) => void;
   onZoneClick?: (location: LocationInfo) => void;
@@ -27,13 +28,13 @@ export function Zone({
   className, 
   isInteractable = true,
   activeCardId,
+  isTargeted = false,
   onCardClick,
   onInfoClick,
   onZoneClick
 }: ZoneProps) {
   const isSlot = type === 'slot';
   
-  // IDから現在のLocationInfoを解析
   const location = parseLocationId(id) || undefined;
   
   const handleZoneClick = () => {
@@ -45,13 +46,15 @@ export function Zone({
     <div
       onClick={handleZoneClick}
       className={cn(
-        "relative transition-colors rounded-lg p-2 min-h-[100px] min-w-[70px]",
+        "relative transition-all duration-300 rounded-xl p-1 sm:p-2",
         // Base layout
-        orientation === 'vertical' ? "flex flex-col items-center pt-4 pb-4" : "flex flex-row items-center px-4",
+        orientation === 'vertical' ? "flex flex-col items-center pt-2 pb-2 min-h-[140px] w-20 sm:w-24" : "flex flex-row items-center px-4 min-h-[110px]",
         // Interactive visual cue
-        isInteractable && "cursor-pointer hover:bg-white/5",
-        // Border style
-        "border-dashed border-2 border-gray-300/50 bg-gray-50/10",
+        isInteractable && "cursor-pointer hover:bg-white/5 hover:ring-1 hover:ring-white/20",
+        // Empty state styling
+        isSlot && cards.length === 0 && "border-2 border-dashed border-white/20",
+        // Targeted Highlight (Guide)
+        isTargeted && "bg-amber-500/10 ring-2 ring-amber-500/70 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse",
         className
       )}
     >
@@ -59,12 +62,13 @@ export function Zone({
         <div 
             key={card.id} 
             className={cn(
-                "relative transition-transform duration-200",
-                // Overlap logic
-                isSlot && index > 0 && orientation === 'vertical' && "-mt-12 sm:-mt-16",
-                isSlot && index > 0 && orientation === 'horizontal' && "-ml-8",
-                // Hover effect for slots
-                isSlot && isInteractable && "hover:z-20"
+                "relative transition-all duration-300 ease-out",
+                // Vertical Stack
+                isSlot && index > 0 && orientation === 'vertical' && "-mt-16 sm:-mt-20",
+                // Horizontal Stack
+                isSlot && index > 0 && orientation === 'horizontal' && "-ml-12",
+                // Hover effect
+                isSlot && isInteractable && "hover:z-20 hover:-translate-y-2"
             )}
             style={{ zIndex: index }}
         >
@@ -79,10 +83,21 @@ export function Zone({
         </div>
       ))}
       
-      {/* Empty state placeholder or children */}
-      {cards.length === 0 && !children && (
-        <div className="absolute inset-0 flex items-center justify-center text-gray-500/30 text-xs pointer-events-none">
-            {type === 'slot' ? 'Empty' : ''}
+      {/* Empty Indicator */}
+      {cards.length === 0 && isSlot && (
+        <div className={cn(
+            "absolute inset-0 flex items-center justify-center transition-opacity pointer-events-none",
+            isTargeted ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
+            {isTargeted ? (
+                <div className="w-full h-full rounded-lg flex items-center justify-center">
+                    <span className="text-amber-500 text-[10px] font-bold uppercase tracking-widest animate-bounce">
+                        Place Here
+                    </span>
+                </div>
+            ) : (
+                <div className="w-full h-full bg-white/5 rounded-lg"></div>
+            )}
         </div>
       )}
       

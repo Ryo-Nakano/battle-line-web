@@ -33,7 +33,7 @@ export function Hand({ cards, playerId, isCurrentPlayer, activeCardId, onCardCli
             orientation="horizontal"
             className={cn(
                 "w-full overflow-x-auto min-h-[120px] justify-center items-center pb-2 gap-2",
-                "border-none bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 shadow-inner", 
+                "border-none bg-zinc-900/40 backdrop-blur-md rounded-2xl border border-white/5 shadow-2xl", 
                 className
             )}
         />

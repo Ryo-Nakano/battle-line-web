@@ -42,7 +42,7 @@ export function parseLocationId(id: string): LocationInfo | null {
     // parts[2] 以降があれば結合しておく（念のため）
     const slotType = parts.slice(2).join('-'); 
     
-    if (slotType !== 'p0_slots' && slotType !== 'p1_slots' && slotType !== 'tactic_zone') {
+    if (slotType !== 'p0_slots' && slotType !== 'p1_slots' && slotType !== 'p0_tactic_slots' && slotType !== 'p1_tactic_slots') {
         // もしかするとアンダースコアではなくハイフンで繋がれている可能性を考慮？
         // 現状は厳密に型定義通り判定する
         return null;

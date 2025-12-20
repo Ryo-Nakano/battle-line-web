@@ -1,4 +1,6 @@
 // src/moves.js
+import { isEnvironmentTactic } from './constants/tactics.js';
+
 const INVALID_MOVE = 'INVALID_MOVE';
 
 export const endTurn = ({ events }) => {
@@ -25,7 +27,8 @@ const resolveLocation = (G, ctx, location) => {
     if (!flag) return null;
     if (location.slotType === 'p0_slots') return flag.p0_slots;
     if (location.slotType === 'p1_slots') return flag.p1_slots;
-    if (location.slotType === 'tactic_zone') return flag.tactic_zone;
+    if (location.slotType === 'p0_tactic_slots') return flag.p0_tactic_slots;
+    if (location.slotType === 'p1_tactic_slots') return flag.p1_tactic_slots;
   } else if (location.area === 'deck') {
     return location.deckType === 'troop' ? G.troopDeck : G.tacticDeck;
   } else if (location.area === 'discard') {
@@ -45,21 +48,21 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
       return INVALID_MOVE;
     }
   } else if (from.area === 'board') {
-    // 自分のスロット (p0_slots/p1_slots) か確認
-    // tactic_zone にあるカードは移動できるか？ -> 一度置いたら移動不可が基本ルールだが、
-    // 実装段階では「操作性」優先で動かせても良いかもしれない。
-    // ただし「相手のスロット」にあるカードは絶対に動かせない。
-    const isMySlot = (playerID === '0' && from.slotType === 'p0_slots') ||
-                     (playerID === '1' && from.slotType === 'p1_slots');
-    // 戦術カードが共通ゾーンにある場合、それを動かせるのは誰か？
-    // 通常は再配置系のカード効果以外では動かせない。
-    // ここでは「自分のスロット」以外からの移動を禁止する（戦術ゾーンからの移動も一旦禁止）。
+    // --- フラッグ確保済みチェック (移動元) ---
+    const flag = G.flags[from.flagIndex];
+    if (flag && flag.owner !== null) {
+        console.warn(`Cannot move card from claimed flag ${from.flagIndex}`);
+        return INVALID_MOVE;
+    }
+
+    // 自分のスロットか確認
+    // 部隊スロット または 戦術スロット
+    const isMySlot = (playerID === '0' && (from.slotType === 'p0_slots' || from.slotType === 'p0_tactic_slots')) ||
+                     (playerID === '1' && (from.slotType === 'p1_slots' || from.slotType === 'p1_tactic_slots'));
+    
     if (!isMySlot) {
-       // ただし、もし「自分のスロット」から「自分のスロット」への移動機能を作るならOKだが、
-       // ここでは「相手のスロット」を触ろうとしたら弾く。
-       const isOpponentSlot = (playerID === '0' && from.slotType === 'p1_slots') ||
-                              (playerID === '1' && from.slotType === 'p0_slots');
-       if (isOpponentSlot) return INVALID_MOVE;
+       // 相手のスロットを触ろうとしたら弾く
+       return INVALID_MOVE;
     }
   }
 
@@ -75,14 +78,45 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
         return INVALID_MOVE;
     }
   } else if (to.area === 'board') {
+    // --- フラッグ確保済みチェック (移動先) ---
+    const flag = G.flags[to.flagIndex];
+    if (flag && flag.owner !== null) {
+        console.warn(`Cannot move card to claimed flag ${to.flagIndex}`);
+        return INVALID_MOVE;
+    }
+
     // 相手のスロットには置けない
-    const isOpponentSlot = (playerID === '0' && to.slotType === 'p1_slots') ||
-                           (playerID === '1' && to.slotType === 'p0_slots');
+    const isOpponentSlot = (playerID === '0' && (to.slotType === 'p1_slots' || to.slotType === 'p1_tactic_slots')) ||
+                           (playerID === '1' && (to.slotType === 'p0_slots' || to.slotType === 'p0_tactic_slots'));
     if (isOpponentSlot) {
       console.warn(`Cannot place card in opponent's slot.`);
       return INVALID_MOVE;
     }
-    // 戦術ゾーン (tactic_zone) への配置はOK（環境カード）
+
+    // --- 戦術カードの種類による配置制限 ---
+    const sourceList = resolveLocation(G, ctx, from);
+    const card = sourceList?.find(c => c.id === cardId);
+
+    if (card) {
+        const isEnv = card.type === 'tactic' && isEnvironmentTactic(card.name);
+        const isTacticSlot = to.slotType === 'p0_tactic_slots' || to.slotType === 'p1_tactic_slots';
+
+        if (isTacticSlot) {
+            // 戦術スロットには地形戦術のみ配置可能
+            if (!isEnv) {
+                console.warn(`Cannot place non-environment card to tactic slot.`);
+                return INVALID_MOVE;
+            }
+        } else {
+            // 部隊スロットには部隊カード または 地形戦術以外の戦術カードのみ配置可能
+            // (= 地形戦術は部隊スロットに置けない)
+            if (isEnv) {
+                console.warn(`Cannot place environment tactic to troop slot.`);
+                return INVALID_MOVE;
+            }
+        }
+    }
+    // 自分の戦術スロットへの配置はOK
   } else if (to.area === 'deck') {
       // デッキに戻すのは特殊効果（偵察）のみ
       // 移動元が手札の場合のみ許可する

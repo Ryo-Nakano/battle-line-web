@@ -85,14 +85,24 @@ describe('Moves', () => {
 
     // --- Step 6 Tests ---
 
-    it('should move card to tactic_zone', () => {
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1',
-            from: { area: 'hand', playerId: '0' },
-            to: { area: 'board', flagIndex: 0, slotType: 'tactic_zone' }
-        });
-        expect(result).not.toBe(INVALID_MOVE);
-        expect(G.flags[0].tactic_zone).toHaveLength(1);
+    it('should allow moving environment tactic (Fog) to tactic slot', () => {
+      const card = { id: 'c1', type: 'tactic', name: 'Fog' };
+      const G = {
+        flags: [{ id: 'flag-0', owner: null, p0_tactic_slots: [], p1_tactic_slots: [] }],
+        players: {
+          '0': { hand: [card] }
+        }
+      };
+      const ctx = { currentPlayer: '0' };
+
+      moveCard({ G, ctx }, {
+        cardId: 'c1',
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'board', flagIndex: 0, slotType: 'p0_tactic_slots' }
+      });
+
+      expect(G.players['0'].hand).toHaveLength(0);
+      expect(G.flags[0].p0_tactic_slots).toHaveLength(1);
     });
 
     it('should allow returning card from hand to deck (Scout)', () => {
@@ -165,12 +175,75 @@ describe('Moves', () => {
   });
 
   describe('claimFlag', () => {
-    it('should toggle flag owner', () => {
+    it('should claim flag and prevent reclaiming', () => {
+      const G = {
+        flags: [{ id: 'flag-0', owner: null }],
+        players: {
+          '0': { hand: [] },
+          '1': { hand: [] }
+        }
+      };
+      const ctx = { currentPlayer: '0' };
+
+      // Claim flag
       claimFlag({ G, ctx }, 0);
       expect(G.flags[0].owner).toBe('0');
 
-      claimFlag({ G, ctx }, 0);
-      expect(G.flags[0].owner).toBe(null);
+      // Try to claim again (should fail or not change)
+      const result = claimFlag({ G, ctx }, 0);
+      expect(result).toBe('INVALID_MOVE');
+      expect(G.flags[0].owner).toBe('0');
+    });
+
+    it('should prevent moving cards to/from claimed flag', () => {
+      const card = { id: 'c1', type: 'troop', color: 'red', value: 1 };
+      const G = {
+        flags: [
+          { 
+            id: 'flag-0', 
+            owner: '0', // Claimed by Player 0
+            p0_slots: [card], 
+            p1_slots: [],
+            p0_tactic_slots: [],
+            p1_tactic_slots: []
+          }
+        ],
+        players: {
+          '0': { hand: [{ id: 'c2', type: 'troop', color: 'blue', value: 2 }] },
+          '1': { hand: [] }
+        },
+        troopDeck: [],
+        tacticDeck: [],
+        troopDiscard: [],
+        tacticDiscard: []
+      };
+      const ctx = { currentPlayer: '0' };
+
+      // Try to place card on claimed flag
+      const placeResult = moveCard({ G, ctx }, {
+        cardId: 'c2',
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'board', flagIndex: 0, slotType: 'p0_slots' }
+      });
+      expect(placeResult).toBe('INVALID_MOVE');
+      expect(G.players['0'].hand.length).toBe(1); // Card should remain in hand
+
+      // Try to retrieve card from claimed flag
+      const retrieveResult = moveCard({ G, ctx }, {
+        cardId: 'c1',
+        from: { area: 'board', flagIndex: 0, slotType: 'p0_slots' },
+        to: { area: 'hand', playerId: '0' }
+      });
+      expect(retrieveResult).toBe('INVALID_MOVE');
+      expect(G.flags[0].p0_slots.length).toBe(1); // Card should remain on board
+
+      // Try to place card to tactic slot of claimed flag
+      const tacticResult = moveCard({ G, ctx }, {
+        cardId: 'c2',
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'board', flagIndex: 0, slotType: 'p0_tactic_slots' }
+      });
+      expect(tacticResult).toBe('INVALID_MOVE');
     });
   });
 

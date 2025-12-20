@@ -52,7 +52,8 @@ export const BattleLine = {
       owner: null,
       p0_slots: [],
       p1_slots: [],
-      tactic_zone: []
+      p0_tactic_slots: [],
+      p1_tactic_slots: []
     }));
 
     return {

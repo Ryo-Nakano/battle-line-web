@@ -30,8 +30,8 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
       onClick={!isDisabled ? onClick : undefined}
     >
       <div className={cn(
-          "text-xs font-bold uppercase tracking-wider transition-colors",
-          isReturnTarget ? "text-amber-400 animate-pulse" : "text-slate-500"
+          "text-[10px] font-bold uppercase tracking-wider transition-colors",
+          isReturnTarget ? "text-amber-400 animate-pulse" : "text-zinc-500"
       )}>
         {label}
       </div>
@@ -41,10 +41,10 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
             <div className="relative">
                 {/* Stack effects using explicit divs */}
                 {count > 2 && (
-                    <div className="absolute inset-0 w-full h-full bg-slate-800 border-2 border-slate-600 rounded-lg translate-x-3 translate-y-3" />
+                    <div className="absolute inset-0 w-full h-full bg-zinc-800 border-2 border-zinc-600 rounded-lg translate-x-1.5 translate-y-1.5 shadow-md" />
                 )}
                 {count > 1 && (
-                    <div className="absolute inset-0 w-full h-full bg-slate-800 border-2 border-slate-600 rounded-lg translate-x-1.5 translate-y-1.5" />
+                    <div className="absolute inset-0 w-full h-full bg-zinc-800 border-2 border-zinc-600 rounded-lg translate-x-0.5 translate-y-0.5 shadow-md" />
                 )}
                 
                 {/* Main Card */}
@@ -56,7 +56,7 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
                         card={dummyCard} 
                         isInteractable={false}
                         className={cn(
-                            "shadow-lg",
+                            "shadow-xl border-zinc-600",
                             isReturnTarget && "ring-2 ring-amber-500"
                         )}
                      />
@@ -64,8 +64,8 @@ export const DeckPile = ({ count, type, onClick, isDisabled, isReturnTarget, cla
             </div>
         ) : (
             // 空のデッキプレースホルダー
-            <div className="w-14 h-20 sm:w-16 sm:h-24 md:w-20 md:h-28 rounded-lg border-2 border-dashed border-slate-700 bg-slate-800/30 flex items-center justify-center">
-                <span className="text-slate-600 text-xs">Empty</span>
+            <div className="w-16 h-24 sm:w-20 sm:h-28 rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 flex items-center justify-center">
+                <span className="text-zinc-600 text-xs font-bold">EMPTY</span>
             </div>
         )}
       </div>
