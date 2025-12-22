@@ -5,7 +5,7 @@ import { BattleLineBoard } from './board/Board';
 import type { GameState } from './types';
 
 const { protocol, hostname } = window.location;
-const server = import.meta.env.VITE_SERVER_URL || `${protocol}//${hostname}:8000`;
+const server = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_SERVER_URL || `${protocol}//${hostname}:8000`;
 
 const App = Client<GameState>({
   game: BattleLine,
