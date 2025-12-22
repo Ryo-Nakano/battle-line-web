@@ -7,8 +7,8 @@ const { Server, Origins } = require('boardgame.io/server');
 const server = Server({
   games: [BattleLine],
   origins: [
-    Origins.LOCALHOST, 
-    process.env.VITE_SERVER_URL || 'https://myapp.vercel.app'
+    Origins.LOCALHOST,
+    process.env.ALLOWED_ORIGIN || 'https://myapp.vercel.app'
   ],
 });
 

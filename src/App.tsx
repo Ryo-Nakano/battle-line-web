@@ -11,7 +11,7 @@ const App = Client<GameState>({
   game: BattleLine,
   board: BattleLineBoard,
   multiplayer: SocketIO({ server }),
-  debug: true,
+  debug: import.meta.env.DEV,
 });
 
 export default App;
