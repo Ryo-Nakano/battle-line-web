@@ -8,7 +8,7 @@ export interface Card {
   value?: number;    // 1-10
   // 戦術カード用
   name?: string;     // カード名 (例: 'Alexander', 'Fog')
-  
+
   faceDown?: boolean; // 裏向き表示フラグ
 }
 
@@ -36,14 +36,15 @@ export interface GameState {
   troopDiscard: Card[];
   tacticDiscard: Card[];
   tacticsField: {
-      [playerID: string]: Card[];
+    [playerID: string]: Card[];
   };
   scoutDrawCount: number | null;
   scoutReturnCount: number | null;
-  
+  activeGuileTactic: { type: string; cardId: string } | null;
+
   // 公開情報
   flags: FlagState[];
-  
+
   // ゲーム進行用フラグ（必要に応じて追加）
   isGameEnded?: boolean;
 }
