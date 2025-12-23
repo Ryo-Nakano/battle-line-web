@@ -137,8 +137,8 @@ export const BattleLine = {
       },
       turn: {
         order: {
-          first: (G, ctx) => Number(G.startPlayer || 0),
-          next: (G, ctx) => (ctx.playOrderPos + 1) % ctx.numPlayers,
+          first: ({ G }) => Number(G.startPlayer || 0),
+          next: ({ ctx }) => (ctx.playOrderPos + 1) % ctx.numPlayers,
         }
       }
     }
