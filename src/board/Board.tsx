@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { BoardProps } from 'boardgame.io/react';
 import type { GameState, Card as CardType, LocationInfo } from '../types';
 import { Hand } from './Hand';
@@ -26,6 +26,7 @@ import {
 } from '../constants';
 
 interface BattleLineBoardProps extends BoardProps<GameState> {
+    playerName?: string;
 }
 
 interface MiniGameProps {
@@ -33,6 +34,7 @@ interface MiniGameProps {
     ctx: any;
     moves: any;
     playerID: string | null;
+    playerNames: { [key: string]: string | null };
 }
 
 type ActiveCardState = {
@@ -40,7 +42,7 @@ type ActiveCardState = {
     location: LocationInfo;
 } | null;
 
-const MiniGame = ({ G, moves, playerID }: MiniGameProps) => {
+const MiniGame = ({ G, moves, playerID, playerNames }: MiniGameProps) => {
     const myID = playerID || '0';
     const myPick = G.minigame.picked[myID];
     const winner = G.minigame.winner;
@@ -48,16 +50,33 @@ const MiniGame = ({ G, moves, playerID }: MiniGameProps) => {
     // Check if I can pick
     const canPick = myPick === null && !winner;
 
+    const myName = playerNames[myID] || `Player ${myID}`;
+    const opponentID = myID === '0' ? '1' : '0';
+    const opponentName = playerNames[opponentID] || (
+        <span className="italic text-zinc-600">Waiting for opponent...</span>
+    );
+
     return (
         <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black">
             <h1 className="text-3xl font-bold mb-4 text-amber-500 tracking-widest uppercase">Determine Start Player</h1>
+
+            <div className="flex justify-between w-full max-w-2xl mb-8 px-8">
+                <div className="text-center">
+                    <div className="text-sm text-zinc-500 mb-1">You</div>
+                    <div className="text-xl font-bold text-amber-400">{myName}</div>
+                </div>
+                <div className="text-center">
+                    <div className="text-sm text-zinc-500 mb-1">Opponent</div>
+                    <div className="text-xl font-bold text-zinc-400">{opponentName}</div>
+                </div>
+            </div>
 
             {!winner && (
                 <div className="mb-8 text-xl font-medium animate-pulse">
                     {canPick ? (
                         <span className="text-amber-400">Please select a card from below</span>
                     ) : (
-                        <span className="text-zinc-500">Opponent is selecting, please wait...</span>
+                        <span className="text-zinc-500">{opponentName} is selecting, please wait...</span>
                     )}
                 </div>
             )}
@@ -65,13 +84,14 @@ const MiniGame = ({ G, moves, playerID }: MiniGameProps) => {
             {winner ? (
                 <div className="text-center flex flex-col items-center">
                     <h2 className="text-2xl mb-8 font-bold">
-                        {winner === myID ? <span className="text-amber-400">You Won!</span> : <span className="text-zinc-400">Opponent Won!</span>}
+                        {winner === myID ? <span className="text-amber-400">You Won!</span> : <span className="text-zinc-400">{opponentName} Won!</span>}
                     </h2>
                     <div className="flex gap-6 justify-center mb-12">
                         {G.minigame.cards.map((val, i) => {
                             const isP0 = G.minigame.picked['0'] === i;
                             const isP1 = G.minigame.picked['1'] === i;
                             const isWinnerCard = (winner === '0' && isP0) || (winner === '1' && isP1);
+                            const pickerName = isP0 ? (playerNames['0'] || 'P0') : (playerNames['1'] || 'P1');
 
                             return (
                                 <div key={i} className={cn(
@@ -79,8 +99,14 @@ const MiniGame = ({ G, moves, playerID }: MiniGameProps) => {
                                     isWinnerCard ? "border-amber-500 bg-amber-900/20 scale-110 z-10 shadow-amber-500/20" : "border-zinc-700 bg-zinc-800/50 opacity-50"
                                 )}>
                                     {val}
-                                    {isP0 && <div className="absolute -top-8 text-sm font-bold text-red-500 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">P0</div>}
-                                    {isP1 && <div className="absolute -top-8 text-sm font-bold text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">P1</div>}
+                                    {(isP0 || isP1) && (
+                                        <div className={cn(
+                                            "absolute -top-8 text-sm font-bold px-3 py-1 rounded-full border",
+                                            isP0 ? "text-red-500 bg-red-500/10 border-red-500/20" : "text-blue-500 bg-blue-500/10 border-blue-500/20"
+                                        )}>
+                                            {pickerName}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -146,7 +172,7 @@ const MiniGame = ({ G, moves, playerID }: MiniGameProps) => {
     );
 };
 
-export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProps) => {
+export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName }: BattleLineBoardProps) => {
     const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
     const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
     const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
@@ -154,8 +180,15 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID }: BattleLineBoardProp
     const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
     const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
 
+    // Sync player name
+    useEffect(() => {
+        if (playerID && playerName && G.playerNames[playerID] !== playerName) {
+            moves.setName(playerName);
+        }
+    }, [playerID, playerName, G.playerNames, moves]);
+
     if (ctx.phase === PHASES.DETERMINATION) {
-        return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} />;
+        return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} playerNames={G.playerNames} />;
     }
 
     const currentPlayerID = playerID || PLAYER_IDS.P0;

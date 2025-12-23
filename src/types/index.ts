@@ -54,6 +54,7 @@ export interface GameState {
     winner: string | null;
   };
   startPlayer: string | null;
+  playerNames: { [playerID: string]: string | null };
 }
 
 export type LocationInfo = {

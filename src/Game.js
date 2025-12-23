@@ -9,6 +9,7 @@ import {
   PHASES,
   MINIGAME_CONFIG
 } from './constants.js';
+import { ActivePlayers } from 'boardgame.io/dist/esm/core.js';
 import {
   drawCard,
   drawAndEndTurn,
@@ -92,13 +93,27 @@ export const BattleLine = {
         winner: null,
       },
       startPlayer: null,
+      playerNames: { [PLAYER_IDS.P0]: null, [PLAYER_IDS.P1]: null },
     };
   },
 
   phases: {
     [PHASES.DETERMINATION]: {
       start: true,
-      moves: { pickCard, chooseOrder },
+      turn: { activePlayers: ActivePlayers.ALL },
+      moves: {
+        pickCard: {
+          move: pickCard,
+          ignoreTurn: true
+        },
+        chooseOrder,
+        setName: {
+          move: ({ G, playerID }, name) => {
+            G.playerNames[playerID] = name;
+          },
+          ignoreTurn: true
+        }
+      },
       next: PHASES.MAIN,
     },
     [PHASES.MAIN]: {
@@ -112,7 +127,13 @@ export const BattleLine = {
         sortHand,
         resolveDeserter,
         resolveTraitor,
-        cancelGuileTactic
+        cancelGuileTactic,
+        setName: {
+          move: ({ G, playerID }, name) => {
+            G.playerNames[playerID] = name;
+          },
+          ignoreTurn: true
+        }
       },
       turn: {
         order: {

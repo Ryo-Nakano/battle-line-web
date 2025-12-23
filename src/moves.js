@@ -450,8 +450,7 @@ export const shuffleDeck = ({ G, random }, deckType) => {
   }
 };
 
-export const pickCard = ({ G, ctx, random, events }, cardIndex) => {
-  const playerID = ctx.currentPlayer;
+export const pickCard = ({ G, ctx, playerID, random, events }, cardIndex) => {
 
   if (G.minigame.picked[playerID] !== null) {
     return INVALID_MOVE;
@@ -494,11 +493,11 @@ export const pickCard = ({ G, ctx, random, events }, cardIndex) => {
   }
 };
 
-export const chooseOrder = ({ G, ctx, events }, order) => {
-  if (G.minigame.winner !== ctx.currentPlayer) return INVALID_MOVE;
+export const chooseOrder = ({ G, ctx, playerID, events }, order) => {
+  if (G.minigame.winner !== playerID) return INVALID_MOVE;
 
   const isFirst = order === 'first';
-  const nextPlayer = isFirst ? ctx.currentPlayer : (ctx.currentPlayer === PLAYER_IDS.P0 ? PLAYER_IDS.P1 : PLAYER_IDS.P0);
+  const nextPlayer = isFirst ? playerID : (playerID === PLAYER_IDS.P0 ? PLAYER_IDS.P1 : PLAYER_IDS.P0);
 
   G.startPlayer = nextPlayer;
   events.endPhase();

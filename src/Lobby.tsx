@@ -2,16 +2,23 @@ import React, { useState } from 'react';
 import { getServerUrl } from './utils';
 
 interface LobbyProps {
-  onJoin: (matchID: string, playerID: string) => void;
+  onJoin: (matchID: string, playerID: string, playerName: string) => void;
 }
 
 export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
   const [matchID, setMatchID] = useState('');
+  const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    // Generate random guest name on mount
+    const randomNum = Math.floor(Math.random() * 900) + 100; // 100-999
+    setPlayerName(`Guest${randomNum}`);
+  }, []);
+
   const handleJoin = async () => {
-    if (!matchID) return;
+    if (!matchID || !playerName) return;
     setLoading(true);
     setError('');
 
@@ -36,7 +43,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
           throw new Error('Failed to create room');
         }
         await createRes.json();
-        onJoin(matchID, '0');
+        onJoin(matchID, '0', playerName);
       } else if (res.ok) {
         const data = await res.json();
         const players = data.players;
@@ -47,9 +54,9 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
         const p1Taken = players.some((p: any) => p.id === 1 && (p.name || p.isConnected));
 
         if (!p0Taken) {
-          onJoin(matchID, '0');
+          onJoin(matchID, '0', playerName);
         } else if (!p1Taken) {
-          onJoin(matchID, '1');
+          onJoin(matchID, '1', playerName);
         } else {
           setError('Room is full');
         }
@@ -64,26 +71,55 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
     }
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+    if (val.length <= 8) {
+      setPlayerName(val);
+    }
+  };
+
+  const handleMatchIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+    if (val.length <= 8) {
+      setMatchID(val);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <div className="p-8 bg-white rounded shadow-md w-96">
         <h1 className="mb-6 text-2xl font-bold text-center text-gray-800">Battle Line</h1>
+
         <div className="mb-4">
+          <label className="block mb-2 text-sm font-bold text-gray-700">
+            Nickname
+          </label>
+          <input
+            type="text"
+            className="w-full px-3 py-2 leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+            placeholder="Enter nickname (max 8 chars)"
+            value={playerName}
+            onChange={handleNameChange}
+          />
+        </div>
+
+        <div className="mb-6">
           <label className="block mb-2 text-sm font-bold text-gray-700">
             Room ID
           </label>
           <input
             type="text"
             className="w-full px-3 py-2 leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
-            placeholder="Enter alphanumeric ID"
+            placeholder="Enter Room ID (max 8 chars)"
             value={matchID}
-            onChange={(e) => setMatchID(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+            onChange={handleMatchIDChange}
           />
         </div>
+
         <button
           className="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded hover:bg-blue-700 focus:outline-none focus:shadow-outline disabled:opacity-50"
           onClick={handleJoin}
-          disabled={loading || !matchID}
+          disabled={loading || !matchID || !playerName}
         >
           {loading ? 'Connecting...' : 'Start Game'}
         </button>
