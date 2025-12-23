@@ -218,6 +218,8 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
     const isInverted = currentPlayerID === PLAYER_IDS.P1;
     const opponentID = isInverted ? PLAYER_IDS.P0 : PLAYER_IDS.P1;
     const myID = isInverted ? PLAYER_IDS.P1 : PLAYER_IDS.P0;
+    const myName = G.playerNames[myID] || 'Commander';
+    const opponentName = G.playerNames[opponentID] || `Player ${opponentID}`;
     const isMyTurn = ctx.currentPlayer === myID;
     const isScoutMode = G.scoutDrawCount !== null;
     const scoutReturnCount = G.scoutReturnCount || 0;
@@ -383,7 +385,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                         <div>
                             <div className="text-[10px] text-zinc-400 font-bold tracking-widest uppercase">Opponent</div>
                             <div className="font-bold text-sm flex items-center gap-2">
-                                Player {opponentID}
+                                {opponentName}
                                 {opponentID === ctx.currentPlayer && <span className="text-amber-500 animate-pulse text-xs">Thinking...</span>}
                             </div>
                         </div>
@@ -676,7 +678,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                             </div>
                             <div>
                                 <div className="text-[10px] text-zinc-400 font-bold tracking-widest">YOU</div>
-                                <div className="font-bold">Commander</div>
+                                <div className="font-bold">{myName}</div>
                             </div>
                         </div>
                     </div>
