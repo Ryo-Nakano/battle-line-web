@@ -16,9 +16,14 @@ const BattleLineClient = Client<GameState>({
   debug: import.meta.env.DEV,
 });
 
-const App = () => {
-  const [matchID, setMatchID] = useState<string | null>(null);
-  const [playerID, setPlayerID] = useState<string | null>(null);
+interface AppProps {
+  playerID?: string;
+  matchID?: string;
+}
+
+const App = ({ playerID: initialPlayerID, matchID: initialMatchID }: AppProps = {}) => {
+  const [matchID, setMatchID] = useState<string | null>(initialMatchID || null);
+  const [playerID, setPlayerID] = useState<string | null>(initialPlayerID || null);
 
   if (!matchID || !playerID) {
     return <Lobby onJoin={(mid, pid) => {
