@@ -8,7 +8,7 @@ interface LobbyProps {
 
 interface Room {
   matchID: string;
-  players: { id: number; name?: string }[];
+  players: { id: number; name?: string; isConnected?: boolean }[];
   setupData?: {
     roomName?: string;
     isPrivate?: boolean;
@@ -17,11 +17,16 @@ interface Room {
   createdAt: number;
 }
 
+const validateInput = (value: string): string => {
+  return value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+};
+
 export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinByIdModalOpen, setIsJoinByIdModalOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   // Polling for rooms
   const fetchRooms = async () => {
@@ -108,7 +113,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
               ) : (
                 rooms.map((room) => {
                   const players = room.players || [];
-                  const memberCount = players.filter(p => p.name).length;
+                  const memberCount = room.players.filter(p => p.name || p.isConnected).length;
                   const maxPlayers = 2; // Hardcoded for Battle Line
                   const isFull = memberCount >= maxPlayers;
                   // Simple status logic
@@ -142,7 +147,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
                       <td className="p-5 text-center">
                         <JoinButton
                           room={room}
-                          onJoin={handleJoin}
+                          onJoin={() => setSelectedRoom(room)}
                           disabled={isFull}
                         />
                       </td>
@@ -179,6 +184,13 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
           onJoin={handleJoin}
         />
       )}
+      {selectedRoom && (
+        <JoinRoomModal
+          room={selectedRoom}
+          onClose={() => setSelectedRoom(null)}
+          onJoin={handleJoin}
+        />
+      )}
     </div>
   );
 };
@@ -202,57 +214,13 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const JoinButton = ({ room, onJoin, disabled }: { room: Room, onJoin: any, disabled: boolean }) => {
+const JoinButton = ({ room, onJoin, disabled }: { room: Room, onJoin: () => void, disabled: boolean }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [showNameInput, setShowNameInput] = useState(false);
-  const [playerName, setPlayerName] = useState('');
-
-  const handleJoinClick = () => {
-    if (disabled) return;
-    setShowNameInput(true);
-  };
-
-  const confirmJoin = () => {
-    if (!playerName) return;
-    // Determine which seat is open
-    const p0Taken = room.players.some(p => p.id === 0 && p.name);
-    const playerID = p0Taken ? '1' : '0';
-    onJoin(room.matchID, playerID, playerName);
-  };
-
-  if (showNameInput) {
-    return (
-      <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
-        <input
-          autoFocus
-          type="text"
-          placeholder="Your Name"
-          className="w-24 px-2 py-1 bg-black/40 border border-zinc-600 rounded text-xs text-white focus:border-amber-500 outline-none"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && confirmJoin()}
-        />
-        <button
-          onClick={confirmJoin}
-          disabled={!playerName}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white p-1 rounded transition-colors disabled:opacity-50"
-        >
-          <Plus size={14} />
-        </button>
-        <button
-          onClick={() => setShowNameInput(false)}
-          className="text-zinc-500 hover:text-zinc-300"
-        >
-          <X size={14} />
-        </button>
-      </div>
-    );
-  }
 
   return (
     <button
       disabled={disabled}
-      onClick={handleJoinClick}
+      onClick={onJoin}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`px-4 py-1.5 text-xs font-bold rounded border transition-all ${disabled
@@ -266,8 +234,8 @@ const JoinButton = ({ room, onJoin, disabled }: { room: Room, onJoin: any, disab
 };
 
 const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }) => {
-  const [roomName, setRoomName] = useState('');
-  const [playerName, setPlayerName] = useState('');
+  const [roomName, setRoomName] = useState(() => `Room${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
+  const [playerName, setPlayerName] = useState(() => `Guest${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -321,9 +289,9 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
             <input
               type="text"
               className="w-full bg-black/40 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-amber-500 outline-none transition-colors"
-              placeholder="e.g. Beginners Welcome"
+              placeholder="e.g. Room1234"
               value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
+              onChange={(e) => setRoomName(validateInput(e.target.value))}
             />
           </div>
 
@@ -334,7 +302,7 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
               className="w-full bg-black/40 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-amber-500 outline-none transition-colors"
               placeholder="Enter your nickname"
               value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
+              onChange={(e) => setPlayerName(validateInput(e.target.value))}
             />
           </div>
 
@@ -396,8 +364,8 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
       const data = await res.json();
 
       // Check availability
-      const p0Taken = data.players.some((p: any) => p.id === 0 && p.name);
-      const p1Taken = data.players.some((p: any) => p.id === 1 && p.name);
+      const p0Taken = data.players.some((p: any) => p.id === 0 && (p.name || p.isConnected));
+      const p1Taken = data.players.some((p: any) => p.id === 1 && (p.name || p.isConnected));
 
       if (p0Taken && p1Taken) {
         throw new Error('Room is full');
@@ -444,7 +412,7 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
               className="w-full bg-black/40 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-amber-500 outline-none transition-colors"
               placeholder="Enter your nickname"
               value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
+              onChange={(e) => setPlayerName(validateInput(e.target.value))}
             />
           </div>
 
@@ -459,9 +427,70 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
           <button
             onClick={handleJoin}
             disabled={!matchID || !playerName || loading}
-            className="w-full bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg transition-all transform active:scale-95"
+            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-900/20 transition-all transform active:scale-95"
           >
             {loading ? 'Connecting...' : 'Join Room'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => void, onJoin: any }) => {
+  const [playerName, setPlayerName] = useState(() => `Guest${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
+
+  const handleJoin = () => {
+    if (!playerName) return;
+    // Determine which seat is open
+    const p0Taken = room.players.some(p => p.id === 0 && (p.name || p.isConnected));
+    const playerID = p0Taken ? '1' : '0';
+    onJoin(room.matchID, playerID, playerName);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Plus className="text-amber-500" /> Join Room
+          </h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 mb-2">Room ID</label>
+            <input
+              type="text"
+              readOnly
+              className="w-full bg-black/20 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-400 outline-none cursor-not-allowed"
+              value={room.matchID}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 mb-2">Your Name</label>
+            <input
+              type="text"
+              className="w-full bg-black/40 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-amber-500 outline-none transition-colors"
+              placeholder="Enter your nickname"
+              value={playerName}
+              onChange={(e) => setPlayerName(validateInput(e.target.value))}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            />
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-zinc-800 bg-black/20">
+          <button
+            onClick={handleJoin}
+            disabled={!playerName}
+            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-900/20 transition-all transform active:scale-95"
+          >
+            Join Room
           </button>
         </div>
       </div>

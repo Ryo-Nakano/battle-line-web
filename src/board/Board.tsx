@@ -11,7 +11,7 @@ import { CardHelpModal } from './CardHelpModal';
 import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { Sword, Shield, Info, CheckCircle2, Menu, XCircle } from 'lucide-react';
+import { Sword, Shield, Info, CheckCircle2, Menu, XCircle, Copy } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic } from '../constants/tactics';
 import {
@@ -35,6 +35,7 @@ interface MiniGameProps {
     moves: any;
     playerID: string | null;
     playerNames: { [key: string]: string | null };
+    matchID: string;
 }
 
 type ActiveCardState = {
@@ -42,16 +43,17 @@ type ActiveCardState = {
     location: LocationInfo;
 } | null;
 
-const MiniGame = ({ G, moves, playerID, playerNames }: MiniGameProps) => {
+const MiniGame = ({ G, moves, playerID, playerNames, matchID }: MiniGameProps) => {
     const myID = playerID || '0';
     const myPick = G.minigame.picked[myID];
     const winner = G.minigame.winner;
+    const opponentID = myID === '0' ? '1' : '0';
 
     // Check if I can pick
-    const canPick = myPick === null && !winner;
+    const isOpponentJoined = !!playerNames[opponentID];
+    const canPick = myPick === null && !winner && isOpponentJoined;
 
     const myName = playerNames[myID] || `Player ${myID}`;
-    const opponentID = myID === '0' ? '1' : '0';
     const opponentName = playerNames[opponentID] || (
         <span className="italic text-zinc-600">Waiting for opponent...</span>
     );
@@ -71,10 +73,30 @@ const MiniGame = ({ G, moves, playerID, playerNames }: MiniGameProps) => {
                 </div>
             </div>
 
+            {/* Room ID Display */}
+            <div className="mb-8 flex flex-col items-center gap-2">
+                <span className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Room ID</span>
+                <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2">
+                    <span className="font-mono text-amber-500 font-bold text-lg">{matchID}</span>
+                    <button
+                        onClick={() => navigator.clipboard.writeText(matchID)}
+                        className="text-zinc-500 hover:text-white transition-colors p-1"
+                        title="Copy Room ID"
+                    >
+                        <Copy size={16} />
+                    </button>
+                </div>
+                {!isOpponentJoined && (
+                    <p className="text-xs text-zinc-500 mt-1">Share this ID to invite your opponent</p>
+                )}
+            </div>
+
             {!winner && (
                 <div className="mb-8 text-xl font-medium animate-pulse">
                     {canPick ? (
                         <span className="text-amber-400">Please select a card from below</span>
+                    ) : !isOpponentJoined ? (
+                        <span className="text-zinc-500">Waiting for opponent to join...</span>
                     ) : (
                         <span className="text-zinc-500">{opponentName} is selecting, please wait...</span>
                     )}
@@ -172,7 +194,7 @@ const MiniGame = ({ G, moves, playerID, playerNames }: MiniGameProps) => {
     );
 };
 
-export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName }: BattleLineBoardProps) => {
+export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }: BattleLineBoardProps) => {
     const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
     const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
     const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
@@ -188,7 +210,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName }: BattleL
     }, [playerID, playerName, G.playerNames, moves]);
 
     if (ctx.phase === PHASES.DETERMINATION) {
-        return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} playerNames={G.playerNames} />;
+        return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} playerNames={G.playerNames} matchID={matchID} />;
     }
 
     const currentPlayerID = playerID || PLAYER_IDS.P0;
