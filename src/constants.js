@@ -86,3 +86,12 @@ export const TACTIC_CATEGORIES = {
   ENVIRONMENT: '地形戦術',
   GUILE: '謀略戦術',
 };
+
+export const PHASES = {
+  DETERMINATION: 'determination',
+  MAIN: 'main',
+};
+
+export const MINIGAME_CONFIG = {
+  CARD_COUNT: 3,
+};
