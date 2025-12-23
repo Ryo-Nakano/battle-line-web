@@ -1,23 +1,27 @@
-import { 
-  COLORS, 
-  TROOP_VALUES, 
-  TACTIC_IDS, 
-  CARD_TYPES, 
-  PLAYER_IDS, 
+import {
+  COLORS,
+  TROOP_VALUES,
+  TACTIC_IDS,
+  CARD_TYPES,
+  PLAYER_IDS,
   GAME_CONFIG,
-  SLOTS 
+  SLOTS,
+  PHASES,
+  MINIGAME_CONFIG
 } from './constants.js';
-import { 
-  drawCard, 
-  drawAndEndTurn, 
-  moveCard, 
-  claimFlag, 
-  shuffleDeck, 
-  endTurn, 
+import {
+  drawCard,
+  drawAndEndTurn,
+  moveCard,
+  claimFlag,
+  shuffleDeck,
+  endTurn,
   sortHand,
   resolveDeserter,
   resolveTraitor,
-  cancelGuileTactic
+  cancelGuileTactic,
+  pickCard,
+  chooseOrder
 } from './moves.js';
 
 // カード生成関数（内部利用）
@@ -49,16 +53,16 @@ const createTacticDeck = () => {
 
 export const BattleLine = {
   name: 'battle-line',
-  
+
   setup: ({ random }) => {
     const troopDeck = random.Shuffle(createTroopDeck());
     const tacticDeck = random.Shuffle(createTacticDeck());
-    
+
     const players = {
       [PLAYER_IDS.P0]: { hand: troopDeck.splice(0, GAME_CONFIG.HAND_SIZE) },
       [PLAYER_IDS.P1]: { hand: troopDeck.splice(0, GAME_CONFIG.HAND_SIZE) }
     };
-    
+
     const flags = Array(GAME_CONFIG.FLAG_COUNT).fill(null).map((_, i) => ({
       id: `flag-${i}`,
       owner: null,
@@ -67,6 +71,9 @@ export const BattleLine = {
       [SLOTS.P0_TACTIC]: [],
       [SLOTS.P1_TACTIC]: []
     }));
+
+    // Mini-game setup
+    const minigameCards = random.Shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).slice(0, MINIGAME_CONFIG.CARD_COUNT);
 
     return {
       players,
@@ -79,19 +86,40 @@ export const BattleLine = {
       scoutReturnCount: null,
       activeGuileTactic: null,
       flags,
+      minigame: {
+        cards: minigameCards,
+        picked: { [PLAYER_IDS.P0]: null, [PLAYER_IDS.P1]: null },
+        winner: null,
+      },
+      startPlayer: null,
     };
   },
 
-  moves: {
-    drawCard,
-    drawAndEndTurn,
-    moveCard,
-    claimFlag,
-    shuffleDeck,
-    endTurn,
-    sortHand,
-    resolveDeserter,
-    resolveTraitor,
-    cancelGuileTactic
-  },
+  phases: {
+    [PHASES.DETERMINATION]: {
+      start: true,
+      moves: { pickCard, chooseOrder },
+      next: PHASES.MAIN,
+    },
+    [PHASES.MAIN]: {
+      moves: {
+        drawCard,
+        drawAndEndTurn,
+        moveCard,
+        claimFlag,
+        shuffleDeck,
+        endTurn,
+        sortHand,
+        resolveDeserter,
+        resolveTraitor,
+        cancelGuileTactic
+      },
+      turn: {
+        order: {
+          first: (G, ctx) => Number(G.startPlayer || 0),
+          next: (G, ctx) => (ctx.playOrderPos + 1) % ctx.numPlayers,
+        }
+      }
+    }
+  }
 };

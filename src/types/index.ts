@@ -47,6 +47,13 @@ export interface GameState {
 
   // ゲーム進行用フラグ（必要に応じて追加）
   isGameEnded?: boolean;
+
+  minigame: {
+    cards: number[];
+    picked: { [playerID: string]: number | null };
+    winner: string | null;
+  };
+  startPlayer: string | null;
 }
 
 export type LocationInfo = {

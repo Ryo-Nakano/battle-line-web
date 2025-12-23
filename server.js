@@ -8,6 +8,8 @@ const server = Server({
   games: [BattleLine],
   origins: [
     Origins.LOCALHOST,
+    'http://localhost:5173',
+    'http://localhost:5174',
     process.env.ALLOWED_ORIGIN || 'https://myapp.vercel.app'
   ],
 });
