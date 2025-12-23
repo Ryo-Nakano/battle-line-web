@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getServerUrl } from './utils';
+import { Sword, Shield } from 'lucide-react';
 
 interface LobbyProps {
   onJoin: (matchID: string, playerID: string, playerName: string) => void;
@@ -86,30 +87,40 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded shadow-md w-96">
-        <h1 className="mb-6 text-2xl font-bold text-center text-gray-800">Battle Line</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black relative overflow-hidden">
+      {/* Background Grid Decoration */}
+      <div className="fixed inset-0 pointer-events-none opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
-        <div className="mb-4">
-          <label className="block mb-2 text-sm font-bold text-gray-700">
+      <div className="p-8 bg-zinc-900/80 backdrop-blur-md border border-zinc-700 rounded-2xl shadow-2xl w-96 relative z-10">
+        <div className="flex flex-col items-center mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Sword className="text-amber-600" size={32} />
+            <h1 className="text-3xl font-bold text-center text-zinc-100 tracking-wider whitespace-nowrap">Battle Line Online</h1>
+            <Shield className="text-amber-600" size={32} />
+          </div>
+          <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block mb-2 text-xs font-bold text-zinc-500 uppercase tracking-widest">
             Nickname
           </label>
           <input
             type="text"
-            className="w-full px-3 py-2 leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+            className="w-full px-4 py-3 bg-black/40 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all placeholder-zinc-600"
             placeholder="Enter nickname (max 8 chars)"
             value={playerName}
             onChange={handleNameChange}
           />
         </div>
 
-        <div className="mb-6">
-          <label className="block mb-2 text-sm font-bold text-gray-700">
+        <div className="mb-8">
+          <label className="block mb-2 text-xs font-bold text-zinc-500 uppercase tracking-widest">
             Room ID
           </label>
           <input
             type="text"
-            className="w-full px-3 py-2 leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+            className="w-full px-4 py-3 bg-black/40 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all placeholder-zinc-600"
             placeholder="Enter Room ID (max 8 chars)"
             value={matchID}
             onChange={handleMatchIDChange}
@@ -117,13 +128,13 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
         </div>
 
         <button
-          className="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded hover:bg-blue-700 focus:outline-none focus:shadow-outline disabled:opacity-50"
+          className="w-full px-6 py-4 font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-500 focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-900/20 transition-all transform active:scale-95 uppercase tracking-wide"
           onClick={handleJoin}
           disabled={loading || !matchID || !playerName}
         >
           {loading ? 'Connecting...' : 'Start Game'}
         </button>
-        {error && <p className="mt-4 text-sm text-center text-red-500">{error}</p>}
+        {error && <p className="mt-4 text-sm text-center text-red-500 animate-pulse">{error}</p>}
       </div>
     </div>
   );
