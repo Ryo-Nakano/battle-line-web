@@ -55,7 +55,15 @@ const createTacticDeck = () => {
 export const BattleLine = {
   name: 'battle-line',
 
-  setup: ({ random }) => {
+  setup: ({ random }, setupData) => {
+    // Validate room name if provided
+    if (setupData?.roomName) {
+      const IDENTIFIER_PATTERN = /^[a-zA-Z0-9_]{1,8}$/;
+      if (!IDENTIFIER_PATTERN.test(setupData.roomName)) {
+        throw new Error('Invalid Room Name. Use 1-8 alphanumeric characters or underscores.');
+      }
+    }
+
     const troopDeck = random.Shuffle(createTroopDeck());
     const tacticDeck = random.Shuffle(createTacticDeck());
 

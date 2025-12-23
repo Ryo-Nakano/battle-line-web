@@ -25,12 +25,16 @@ const App = ({ playerID: initialPlayerID, matchID: initialMatchID }: AppProps = 
   const [matchID, setMatchID] = useState<string | null>(initialMatchID || null);
   const [playerID, setPlayerID] = useState<string | null>(initialPlayerID || null);
   const [playerName, setPlayerName] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<string | undefined>(undefined);
 
   if (!matchID || !playerID) {
-    return <Lobby onJoin={(mid, pid, pname) => {
+    return <Lobby onJoin={(mid, pid, pname, creds) => {
       setMatchID(mid);
       setPlayerID(pid);
       setPlayerName(pname);
+      if (creds) {
+        setCredentials(creds);
+      }
     }} />;
   }
 
@@ -39,6 +43,7 @@ const App = ({ playerID: initialPlayerID, matchID: initialMatchID }: AppProps = 
       matchID={matchID}
       playerID={playerID}
       playerName={playerName}
+      credentials={credentials}
     />
   );
 };

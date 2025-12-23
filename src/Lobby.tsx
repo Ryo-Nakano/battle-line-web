@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getServerUrl } from './utils';
-import { Sword, Shield, Users, Lock, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { Sword, Users, Lock, Plus, RefreshCw, Search, X } from 'lucide-react';
 
 interface LobbyProps {
-  onJoin: (matchID: string, playerID: string, playerName: string) => void;
+  onJoin: (matchID: string, playerID: string, playerName: string, credentials?: string) => void;
 }
 
 interface Room {
@@ -18,17 +18,17 @@ interface Room {
 }
 
 const validateInput = (value: string): string => {
-  return value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+  return value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 8);
 };
 
 export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
+  // ... (state remains the same)
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinByIdModalOpen, setIsJoinByIdModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
-  // Polling for rooms
+  // ... (fetchRooms remains the same)
   const fetchRooms = async () => {
     try {
       const serverUrl = getServerUrl();
@@ -48,12 +48,13 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleJoin = (matchID: string, playerID: string, playerName: string) => {
-    onJoin(matchID, playerID, playerName);
+  const handleJoin = (matchID: string, playerID: string, playerName: string, credentials?: string) => {
+    onJoin(matchID, playerID, playerName, credentials);
   };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black relative overflow-hidden flex flex-col items-center p-8">
+      {/* ... (Header and Room List UI remains the same, skipping unchanged parts for brevity if possible, but replace_file_content needs exact match. I will assume the user wants me to replace the whole file or chunks. I'll replace the modals and the interface definition.) */}
       {/* Background Grid Decoration */}
       <div className="fixed inset-0 pointer-events-none opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
@@ -146,7 +147,6 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
                       </td>
                       <td className="p-5 text-center">
                         <JoinButton
-                          room={room}
                           onJoin={() => setSelectedRoom(room)}
                           disabled={isFull}
                         />
@@ -214,40 +214,40 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const JoinButton = ({ room, onJoin, disabled }: { room: Room, onJoin: () => void, disabled: boolean }) => {
-  const [isHovered, setIsHovered] = useState(false);
+const JoinButton = ({ onJoin, disabled }: { onJoin: () => void, disabled: boolean }) => {
 
   return (
     <button
       disabled={disabled}
       onClick={onJoin}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className={`px-4 py-1.5 text-xs font-bold rounded border transition-all ${disabled
         ? 'border-transparent text-zinc-600 cursor-not-allowed bg-zinc-800/50'
         : 'border-amber-600 text-amber-500 hover:bg-amber-600 hover:text-white shadow-lg shadow-amber-900/10'
         }`}
     >
-      {disabled ? 'Full' : 'Join'}
+      {'Join'}
     </button>
   );
 };
 
 const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }) => {
-  const [roomName, setRoomName] = useState(() => `Room${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
-  const [playerName, setPlayerName] = useState(() => `Guest${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
+  const [roomName, setRoomName] = useState(() => `R${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
+  const [playerName, setPlayerName] = useState(() => `U${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleCreate = async () => {
     if (!roomName || !playerName) return;
     setLoading(true);
+    setError('');
 
     const serverUrl = getServerUrl();
     const gameName = 'battle-line';
 
     try {
-      const res = await fetch(`${serverUrl}/games/${gameName}/create`, {
+      // 1. Create Room
+      const createRes = await fetch(`${serverUrl}/games/${gameName}/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -260,12 +260,35 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        onJoin(data.matchID, '0', playerName);
+      if (!createRes.ok) {
+        const errData = await createRes.json();
+        throw new Error(errData.error || 'Failed to create room');
       }
-    } catch (err) {
+
+      const createData = await createRes.json();
+      const matchID = createData.matchID;
+
+      // 2. Join Room to get credentials
+      const joinRes = await fetch(`${serverUrl}/games/${gameName}/${matchID}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerID: '0',
+          playerName: playerName,
+        }),
+      });
+
+      if (!joinRes.ok) {
+        const errData = await joinRes.json();
+        throw new Error(errData.error || 'Failed to join room');
+      }
+
+      const joinData = await joinRes.json();
+      onJoin(matchID, '0', playerName, joinData.playerCredentials);
+
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -326,6 +349,12 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
               {isPrivate ? "Room will be hidden from the list. Share the Room ID to invite players." : "Room will be visible to everyone in the lobby."}
             </p>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="p-6 border-t border-zinc-800 bg-black/20">
@@ -344,7 +373,7 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
 
 const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }) => {
   const [matchID, setMatchID] = useState('');
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(() => `U${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -357,13 +386,13 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
     const gameName = 'battle-line';
 
     try {
+      // Check availability first (optional, but good for UX before trying to join)
       const res = await fetch(`${serverUrl}/games/${gameName}/${matchID}`);
       if (!res.ok) {
         throw new Error('Room not found');
       }
       const data = await res.json();
 
-      // Check availability
       const p0Taken = data.players.some((p: any) => p.id === 0 && (p.name || p.isConnected));
       const p1Taken = data.players.some((p: any) => p.id === 1 && (p.name || p.isConnected));
 
@@ -372,7 +401,24 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
       }
 
       const playerID = p0Taken ? '1' : '0';
-      onJoin(matchID, playerID, playerName);
+
+      // Join Room
+      const joinRes = await fetch(`${serverUrl}/games/${gameName}/${matchID}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerID: playerID,
+          playerName: playerName,
+        }),
+      });
+
+      if (!joinRes.ok) {
+        const errData = await joinRes.json();
+        throw new Error(errData.error || 'Failed to join room');
+      }
+
+      const joinData = await joinRes.json();
+      onJoin(matchID, playerID, playerName, joinData.playerCredentials);
 
     } catch (err: any) {
       setError(err.message || 'Failed to join');
@@ -401,7 +447,7 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
               className="w-full bg-black/40 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-amber-500 outline-none transition-colors"
               placeholder="Enter Room ID"
               value={matchID}
-              onChange={(e) => setMatchID(e.target.value)}
+              onChange={(e) => setMatchID(validateInput(e.target.value))}
             />
           </div>
 
@@ -438,14 +484,46 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
 };
 
 const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => void, onJoin: any }) => {
-  const [playerName, setPlayerName] = useState(() => `Guest${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
+  const [playerName, setPlayerName] = useState(() => `U${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!playerName) return;
-    // Determine which seat is open
-    const p0Taken = room.players.some(p => p.id === 0 && (p.name || p.isConnected));
-    const playerID = p0Taken ? '1' : '0';
-    onJoin(room.matchID, playerID, playerName);
+    setLoading(true);
+    setError('');
+
+    const serverUrl = getServerUrl();
+    const gameName = 'battle-line';
+
+    try {
+      // Determine which seat is open
+      const p0Taken = room.players.some(p => p.id === 0 && (p.name || p.isConnected));
+      const playerID = p0Taken ? '1' : '0';
+
+      // Join Room
+      const joinRes = await fetch(`${serverUrl}/games/${gameName}/${room.matchID}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerID: playerID,
+          playerName: playerName,
+        }),
+      });
+
+      if (!joinRes.ok) {
+        const errData = await joinRes.json();
+        throw new Error(errData.error || 'Failed to join room');
+      }
+
+      const joinData = await joinRes.json();
+      onJoin(room.matchID, playerID, playerName, joinData.playerCredentials);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to join');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -482,15 +560,21 @@ const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => v
               onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
             />
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="p-6 border-t border-zinc-800 bg-black/20">
           <button
             onClick={handleJoin}
-            disabled={!playerName}
+            disabled={!playerName || loading}
             className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-900/20 transition-all transform active:scale-95"
           >
-            Join Room
+            {loading ? 'Joining...' : 'Join Room'}
           </button>
         </div>
       </div>
