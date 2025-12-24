@@ -21,6 +21,10 @@ const validateInput = (value: string): string => {
   return value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 8);
 };
 
+const validateRoomId = (value: string): string => {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12);
+};
+
 export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
   // ... (state remains the same)
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -447,7 +451,7 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
               className="w-full bg-black/40 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-amber-500 outline-none transition-colors"
               placeholder="Enter Room ID"
               value={matchID}
-              onChange={(e) => setMatchID(validateInput(e.target.value))}
+              onChange={(e) => setMatchID(validateRoomId(e.target.value))}
             />
           </div>
 
