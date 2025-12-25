@@ -334,6 +334,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
               activeCardId={activeCard?.card.id}
               onCardClick={handleCardClick}
               onInfoClick={handleInfoClick}
+              onSort={() => moves.sortHand()}
               disabled={isSpectating || !!activeGuileTactic}
             />
           </div>
