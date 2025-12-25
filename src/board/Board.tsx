@@ -472,7 +472,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                             return (
                                 <div key={flag.id} className="flex flex-col items-center justify-center relative group h-[380px] sm:h-[450px] lg:h-[500px]">
                                     {/* Top Area (Opponent) */}
-                                    <div className="flex-1 w-full flex flex-col justify-end pb-4 gap-2">
+                                    <div className="flex-1 w-full flex flex-col justify-end pb-4 gap-2 min-h-0">
                                         {/* Tactic Slot (Opponent) */}
                                         <Zone
                                             id={`flag-${i}-${topTacticSlotsKey}`}
@@ -517,7 +517,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                     </div>
 
                                     {/* Bottom Area (Player) */}
-                                    <div className="flex-1 w-full flex flex-col justify-start pt-4 gap-2">
+                                    <div className="flex-1 w-full flex flex-col justify-start pt-4 gap-2 min-h-0">
                                         {/* Troop Slot (Player) */}
                                         <Zone
                                             id={`flag-${i}-${bottomSlotsKey}`}

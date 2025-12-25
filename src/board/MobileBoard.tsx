@@ -235,7 +235,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
               return (
                 <div key={flag.id} className="flex flex-col items-center justify-center relative h-[320px]">
                   {/* 相手エリア */}
-                  <div className="flex-1 w-full flex flex-col justify-end pb-1">
+                  <div className="flex-1 w-full flex flex-col justify-end pb-1 min-h-0">
                     <Zone
                       id={`flag-${i}-${topTacticSlotsKey}`}
                       cards={topTacticCards}
@@ -274,7 +274,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                   </div>
 
                   {/* 自分エリア */}
-                  <div className="flex-1 w-full flex flex-col justify-start pt-1">
+                  <div className="flex-1 w-full flex flex-col justify-start pt-1 min-h-0">
                     <Zone
                       id={`flag-${i}-${bottomSlotsKey}`}
                       cards={bottomCards}
