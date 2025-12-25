@@ -117,11 +117,17 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
         className
       )}
     >
-      <div className="w-full text-left font-bold text-sm sm:text-base lg:text-lg leading-none">{card.value}</div>
-      <div className="text-white/20">
+      <div className="absolute top-0.5 left-1 sm:top-1 sm:left-1.5 font-bold text-sm sm:text-base lg:text-lg leading-none">
+        {card.value}
+      </div>
+
+      <div className="absolute inset-0 flex items-center justify-center text-white/20 pointer-events-none">
         <Shield className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10" strokeWidth={1.5} />
       </div>
-      <div className="w-full text-right font-bold text-sm sm:text-base lg:text-lg leading-none rotate-180">{card.value}</div>
+
+      <div className="absolute bottom-0.5 right-1 sm:bottom-1 sm:right-1.5 font-bold text-sm sm:text-base lg:text-lg leading-none rotate-180">
+        {card.value}
+      </div>
 
       {/* 装飾用ライン */}
       <div className="absolute inset-1 border border-white/20 rounded-md pointer-events-none"></div>
