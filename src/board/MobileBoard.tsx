@@ -262,7 +262,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                       cards={topCards}
                       type="slot"
                       className={cn(
-                        "h-full justify-end border-none bg-transparent",
+                        "h-full justify-end border-none bg-transparent scale-90 origin-bottom",
                         isOpponentSlotInteractable && "ring-1 ring-red-500/50 bg-red-500/5"
                       )}
                       isInteractable={isOpponentSlotInteractable}
@@ -291,7 +291,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                       id={`flag-${i}-${bottomSlotsKey}`}
                       cards={bottomCards}
                       type="slot"
-                      className="h-full justify-start bg-transparent"
+                      className="h-full justify-start bg-transparent scale-90 origin-top"
                       isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR)}
                       activeCardId={activeCard?.card.id}
                       isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && (
