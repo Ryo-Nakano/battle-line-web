@@ -86,6 +86,23 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
       return;
     }
 
+    // --- Improved Interaction: Place card on existing card click ---
+    // If holding a card from hand, and clicking on own board card, treat as placement
+    if (activeCard &&
+      activeCard.location.area === AREAS.HAND &&
+      location.playerId === myID &&
+      location.area === AREAS.BOARD &&
+      !activeGuileTactic
+    ) {
+      moves.moveCard({
+        cardId: activeCard.card.id,
+        from: activeCard.location,
+        to: location
+      });
+      setActiveCard(null);
+      return;
+    }
+
     if (location.playerId !== myID && location.area !== AREAS.BOARD && location.area !== AREAS.FIELD) return;
     if (location.playerId === opponentID) return;
 

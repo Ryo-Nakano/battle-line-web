@@ -272,6 +272,23 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
             return;
         }
 
+        // --- Improved Interaction: Place card on existing card click ---
+        // If holding a card from hand, and clicking on own board card, treat as placement
+        if (activeCard &&
+            activeCard.location.area === AREAS.HAND &&
+            location.playerId === myID &&
+            location.area === AREAS.BOARD &&
+            !activeGuileTactic
+        ) {
+            moves.moveCard({
+                cardId: activeCard.card.id,
+                from: activeCard.location,
+                to: location
+            });
+            setActiveCard(null);
+            return;
+        }
+
         // Normal interaction (prevent selecting opponent cards usually)
         if (location.playerId !== myID && location.area !== AREAS.BOARD && location.area !== AREAS.FIELD) return; // Allow board for logic check, blocked by validation mostly
         if (location.playerId === opponentID) return; // Strict block for normal play
