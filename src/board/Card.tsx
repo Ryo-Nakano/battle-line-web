@@ -24,7 +24,7 @@ const colorMap: Record<string, string> = {
 };
 
 export function Card({ card, location, isSelected, onClick, onInfoClick, className, isInteractable = true }: CardProps) {
-  
+
   const handleClick = (e: React.MouseEvent) => {
     if (!isInteractable || !onClick) return;
     e.stopPropagation();
@@ -32,24 +32,25 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
   };
 
   // 共通のベーススタイル（縦長長方形 1:1.4）
-  const baseStyles = "relative w-16 h-24 sm:w-20 sm:h-28 rounded-lg shadow-md transition-all duration-200 flex flex-col items-center justify-between p-2 select-none box-border border-2";
-  
+  // レスポンシブ: 60×84px (default) → 64×96px (sm) → 80×112px (lg)
+  const baseStyles = "relative w-[60px] h-[84px] sm:w-16 sm:h-24 lg:w-20 lg:h-28 rounded-lg shadow-md transition-all duration-200 flex flex-col items-center justify-between p-1.5 sm:p-2 select-none box-border border-2";
+
   // 裏向きの場合
   if (card.faceDown) {
     const isTactic = card.type === CARD_TYPES.TACTIC;
-    const backStyles = isTactic 
-        ? "bg-amber-950 border-amber-600 text-amber-500" 
-        : "bg-zinc-800 border-zinc-500 text-zinc-300";
-    
+    const backStyles = isTactic
+      ? "bg-amber-950 border-amber-600 text-amber-500"
+      : "bg-zinc-800 border-zinc-500 text-zinc-300";
+
     return (
       <div
         className={cn(baseStyles, backStyles, className)}
       >
-        <div className="w-full h-full border border-white/5 rounded flex flex-col items-center justify-center gap-1">
-            {isTactic ? <Scroll size={24} /> : <Shield size={24} />}
-            <span className="text-[8px] sm:text-[10px] font-bold tracking-widest">
-                {isTactic ? "TACTIC" : "TROOP"}
-            </span>
+        <div className="w-full h-full border border-white/5 rounded flex flex-col items-center justify-center gap-0.5 sm:gap-1">
+          {isTactic ? <Scroll className="w-5 h-5 sm:w-6 sm:h-6" /> : <Shield className="w-5 h-5 sm:w-6 sm:h-6" />}
+          <span className="text-[7px] sm:text-[8px] lg:text-[10px] font-bold tracking-widest">
+            {isTactic ? "TACTIC" : "TROOP"}
+          </span>
         </div>
       </div>
     );
@@ -65,40 +66,40 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
       <div
         onClick={handleClick}
         className={cn(
-            baseStyles,
-            "bg-zinc-800 border-amber-500 text-amber-100",
-            isInteractable && "cursor-pointer hover:-translate-y-2",
-            isSelected && "-translate-y-4 ring-4 ring-amber-400/50 shadow-2xl z-50",
-            !isInteractable && "cursor-default opacity-90",
-            className
+          baseStyles,
+          "bg-zinc-800 border-amber-500 text-amber-100",
+          isInteractable && "cursor-pointer hover:-translate-y-2",
+          isSelected && "-translate-y-4 ring-4 ring-amber-400/50 shadow-2xl z-50",
+          !isInteractable && "cursor-default opacity-90",
+          className
         )}
       >
-         <div className="w-full text-center text-[10px] sm:text-xs font-bold leading-tight z-10 break-words line-clamp-2">
-             {displayName}
-         </div>
-         <div className="text-amber-500/80">
-             <Scroll size={32} />
-         </div>
-         {onInfoClick && (
-            <button
-                className="absolute top-1 right-1 w-4 h-4 bg-amber-600/50 hover:bg-amber-600 text-white rounded-full flex items-center justify-center text-[10px] font-serif transition-colors z-20"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onInfoClick(card);
-                }}
-            >
-                i
-            </button>
-         )}
-         {/* 装飾 */}
-         <div className="absolute inset-1 border border-amber-500/20 rounded pointer-events-none"></div>
+        <div className="w-full text-center text-[8px] sm:text-[10px] lg:text-xs font-bold leading-tight z-10 break-words line-clamp-2">
+          {displayName}
+        </div>
+        <div className="text-amber-500/80">
+          <Scroll className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
+        </div>
+        {onInfoClick && (
+          <button
+            className="absolute top-1 right-1 w-4 h-4 bg-amber-600/50 hover:bg-amber-600 text-white rounded-full flex items-center justify-center text-[10px] font-serif transition-colors z-20"
+            onClick={(e) => {
+              e.stopPropagation();
+              onInfoClick(card);
+            }}
+          >
+            i
+          </button>
+        )}
+        {/* 装飾 */}
+        <div className="absolute inset-1 border border-amber-500/20 rounded pointer-events-none"></div>
       </div>
     );
   }
 
   // 部隊カード
   const specificStyles = card.color ? (colorMap[card.color] || 'bg-zinc-700') : 'bg-zinc-700';
-  
+
   return (
     <div
       onClick={handleClick}
@@ -111,12 +112,12 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
         className
       )}
     >
-      <div className="w-full text-left font-bold text-lg leading-none">{card.value}</div>
+      <div className="w-full text-left font-bold text-sm sm:text-base lg:text-lg leading-none">{card.value}</div>
       <div className="text-white/20">
-          <Shield size={40} strokeWidth={1.5} />
+        <Shield className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10" strokeWidth={1.5} />
       </div>
-      <div className="w-full text-right font-bold text-lg leading-none rotate-180">{card.value}</div>
-      
+      <div className="w-full text-right font-bold text-sm sm:text-base lg:text-lg leading-none rotate-180">{card.value}</div>
+
       {/* 装飾用ライン */}
       <div className="absolute inset-1 border border-white/20 rounded-md pointer-events-none"></div>
     </div>

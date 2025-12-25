@@ -57,23 +57,23 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black relative overflow-hidden flex flex-col items-center p-8">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black relative overflow-hidden flex flex-col items-center p-4 sm:p-8">
       {/* ... (Header and Room List UI remains the same, skipping unchanged parts for brevity if possible, but replace_file_content needs exact match. I will assume the user wants me to replace the whole file or chunks. I'll replace the modals and the interface definition.) */}
       {/* Background Grid Decoration */}
       <div className="fixed inset-0 pointer-events-none opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
       <div className="w-full max-w-5xl z-10">
-        {/* Header */}
-        <header className="flex justify-between items-end mb-8 border-b border-zinc-800 pb-6">
+        {/* Header - レスポンシブ対応 */}
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 sm:mb-8 border-b border-zinc-800 pb-4 sm:pb-6 gap-4">
           <div className="flex items-center gap-4">
             <div className="bg-amber-600/20 p-3 rounded-xl border border-amber-600/30">
               <Sword className="text-amber-500" size={32} />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-zinc-100 flex items-center gap-3">
+              <h1 className="text-2xl sm:text-4xl font-bold text-zinc-100 flex items-center gap-2 sm:gap-3">
                 Battle Line <span className="text-amber-600">Online</span>
               </h1>
-              <p className="text-zinc-500 mt-1 font-medium tracking-wide">Select a room to join the battle.</p>
+              <p className="text-zinc-500 mt-1 font-medium tracking-wide text-sm sm:text-base">Select a room to join the battle.</p>
             </div>
           </div>
 
@@ -95,8 +95,8 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
           </div>
         </header>
 
-        {/* Room List */}
-        <div className="bg-zinc-900/80 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-zinc-700/50">
+        {/* Room List - 横スクロール対応 */}
+        <div className="bg-zinc-900/80 backdrop-blur-md rounded-2xl shadow-2xl overflow-x-auto border border-zinc-700/50">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-black/40 text-zinc-500 text-xs border-b border-zinc-800">
@@ -299,9 +299,9 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100vh-1rem)] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 sm:p-6 border-b border-zinc-800 flex justify-between items-center">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Plus className="text-amber-500" /> Create Room
           </h2>
@@ -310,7 +310,7 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
             <label className="block text-xs font-bold text-zinc-500 mb-2">Room Name</label>
             <input
@@ -361,7 +361,7 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
           )}
         </div>
 
-        <div className="p-6 border-t border-zinc-800 bg-black/20">
+        <div className="p-4 sm:p-6 border-t border-zinc-800 bg-black/20">
           <button
             onClick={handleCreate}
             disabled={!roomName || !playerName || loading}
@@ -432,9 +432,9 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100vh-1rem)] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 sm:p-6 border-b border-zinc-800 flex justify-between items-center">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Search className="text-zinc-400" /> Join by ID
           </h2>
@@ -443,7 +443,7 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
             <label className="block text-xs font-bold text-zinc-500 mb-2">Room ID</label>
             <input
@@ -473,7 +473,7 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
           )}
         </div>
 
-        <div className="p-6 border-t border-zinc-800 bg-black/20">
+        <div className="p-4 sm:p-6 border-t border-zinc-800 bg-black/20">
           <button
             onClick={handleJoin}
             disabled={!matchID || !playerName || loading}
@@ -531,9 +531,9 @@ const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => v
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100vh-1rem)] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 sm:p-6 border-b border-zinc-800 flex justify-between items-center">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Plus className="text-amber-500" /> Join Room
           </h2>
@@ -542,7 +542,7 @@ const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => v
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
             <label className="block text-xs font-bold text-zinc-500 mb-2">Room ID</label>
             <input
@@ -572,7 +572,7 @@ const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => v
           )}
         </div>
 
-        <div className="p-6 border-t border-zinc-800 bg-black/20">
+        <div className="p-4 sm:p-6 border-t border-zinc-800 bg-black/20">
           <button
             onClick={handleJoin}
             disabled={!playerName || loading}
