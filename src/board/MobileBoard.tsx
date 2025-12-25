@@ -9,7 +9,7 @@ import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { CheckCircle2, Info, XCircle } from 'lucide-react';
+import { CheckCircle2, Info, XCircle, Zap } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic } from '../constants/tactics';
 import {
@@ -154,6 +154,18 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
     } else {
       setDiscardModalType(type);
     }
+  };
+
+  const handlePlayTactic = () => {
+    if (!activeCard || activeCard.location.area !== AREAS.HAND) return;
+    if (!isGuileTactic(activeCard.card)) return;
+
+    moves.moveCard({
+      cardId: activeCard.card.id,
+      from: activeCard.location,
+      to: { area: AREAS.FIELD, playerId: myID }
+    });
+    setActiveCard(null);
   };
 
   const canEndTurn = isMyTurn && !activeGuileTactic && (!isScoutMode || (
@@ -325,6 +337,17 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
               disabled={isSpectating || !!activeGuileTactic}
             />
           </div>
+
+          {/* 戦術発動ボタン */}
+          {activeCard && activeCard.location.area === AREAS.HAND && isGuileTactic(activeCard.card) && (
+            <button
+              className="px-3 py-2 rounded-lg font-bold shadow-lg flex items-center gap-1 text-sm transition-all bg-red-600 hover:bg-red-500 text-white animate-pulse shadow-red-900/50"
+              onClick={handlePlayTactic}
+            >
+              <Zap size={16} />
+              ACTIVATE
+            </button>
+          )}
 
           {/* ENDボタン */}
           <button
