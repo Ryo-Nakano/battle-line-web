@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Card as CardType, LocationInfo } from '../types';
 import { Card } from './Card';
 import { cn } from '../utils';
@@ -14,6 +14,8 @@ interface MobileHandProps {
   disabled?: boolean;
 }
 
+const CLOSE_ANIMATION_DURATION = 350;
+
 export function MobileHand({
   cards,
   playerId,
@@ -24,7 +26,46 @@ export function MobileHand({
   disabled = false
 }: MobileHandProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const location: LocationInfo = { area: 'hand', playerId };
+
+  // 選択中のカードを取得
+  const activeCard = activeCardId ? cards.find(c => c.id === activeCardId) : undefined;
+
+  // 閉じるアニメーション完了後にモーダルを非表示
+  useEffect(() => {
+    if (isClosing) {
+      const timer = setTimeout(() => {
+        setIsClosing(false);
+        setIsExpanded(false);
+      }, CLOSE_ANIMATION_DURATION);
+      return () => clearTimeout(timer);
+    }
+  }, [isClosing]);
+
+  const handleClose = () => {
+    if (!isClosing) {
+      setIsClosing(true);
+    }
+  };
+
+  const handleExpand = () => {
+    setIsExpanded(true);
+  };
+
+  // カード選択時のハンドラ - 新規選択時のみ自動クローズ
+  const handleCardClickWithAutoClose = (card: CardType, loc?: LocationInfo) => {
+    const isDeselecting = activeCardId === card.id;
+    onCardClick?.(card, loc);
+
+    // 選択解除の場合はモーダルを閉じない
+    if (!isDeselecting) {
+      handleClose();
+    }
+  };
+
+  // フローティングカードを表示するか判定
+  const showFloatingCard = !isExpanded && !isClosing && activeCard;
 
   return (
     <>
@@ -32,18 +73,25 @@ export function MobileHand({
         cards={cards}
         activeCardId={activeCardId}
         disabled={disabled}
-        onExpand={() => setIsExpanded(true)}
+        onExpand={handleExpand}
       />
       {isExpanded && (
         <ExpandedModal
           cards={cards}
           activeCardId={activeCardId}
           location={location}
-          onCardClick={onCardClick}
+          onCardClick={handleCardClickWithAutoClose}
           onInfoClick={onInfoClick}
           onSort={onSort}
           disabled={disabled}
-          onClose={() => setIsExpanded(false)}
+          isClosing={isClosing}
+          onClose={handleClose}
+        />
+      )}
+      {showFloatingCard && (
+        <FloatingCard
+          card={activeCard}
+          onClick={handleExpand}
         />
       )}
     </>
@@ -107,6 +155,7 @@ interface ExpandedModalProps {
   onInfoClick?: (card: CardType) => void;
   onSort?: () => void;
   disabled: boolean;
+  isClosing: boolean;
   onClose: () => void;
 }
 
@@ -118,14 +167,23 @@ const ExpandedModal = ({
   onInfoClick,
   onSort,
   disabled,
+  isClosing,
   onClose
 }: ExpandedModalProps) => (
   <div
-    className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+    className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm"
+    style={{
+      backgroundColor: isClosing ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,0.7)',
+      transition: `background-color ${CLOSE_ANIMATION_DURATION}ms ease-out`
+    }}
     onClick={onClose}
   >
     <div
-      className="w-full max-h-[70vh] bg-zinc-900 border-t border-zinc-700 rounded-t-2xl overflow-hidden animate-in slide-in-from-bottom duration-200"
+      className="w-full max-h-[70vh] bg-zinc-900 border-t border-zinc-700 rounded-t-2xl overflow-hidden"
+      style={{
+        transform: isClosing ? 'translateY(100%)' : 'translateY(0)',
+        transition: `transform ${CLOSE_ANIMATION_DURATION}ms ease-out`
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* ヘッダー */}
@@ -187,5 +245,32 @@ const ExpandedModal = ({
         </p>
       </div>
     </div>
+  </div>
+);
+
+// フローティングカード - 選択中のカードを画面右下に表示
+interface FloatingCardProps {
+  card: CardType;
+  onClick: () => void;
+}
+
+const FloatingCard = ({ card, onClick }: FloatingCardProps) => (
+  <div
+    className="fixed z-40 cursor-pointer animate-pulse"
+    style={{
+      right: '12px',
+      bottom: '70px',
+      transform: 'scale(0.7)',
+      transformOrigin: 'bottom right',
+      filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6))'
+    }}
+    onClick={onClick}
+  >
+    <Card
+      card={card}
+      isSelected={true}
+      isInteractable={true}
+      disableLift={true}
+    />
   </div>
 );
