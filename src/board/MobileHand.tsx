@@ -161,7 +161,7 @@ const ExpandedModal = ({
               key={card.id}
               className={cn(
                 "transition-transform",
-                activeCardId === card.id && "scale-105 -translate-y-2"
+                activeCardId === card.id && "scale-105"
               )}
             >
               <Card
@@ -173,6 +173,7 @@ const ExpandedModal = ({
                 }}
                 onInfoClick={onInfoClick}
                 isInteractable={!disabled}
+                disableLift={true}
               />
             </div>
           ))}

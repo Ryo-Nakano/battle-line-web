@@ -12,6 +12,7 @@ interface CardProps {
   onInfoClick?: (card: CardType) => void;
   className?: string;
   isInteractable?: boolean;
+  disableLift?: boolean;
 }
 
 const colorMap: Record<string, string> = {
@@ -23,7 +24,7 @@ const colorMap: Record<string, string> = {
   [COLORS.PURPLE]: 'bg-purple-700 text-purple-100 border-purple-500',
 };
 
-export function Card({ card, location, isSelected, onClick, onInfoClick, className, isInteractable = true }: CardProps) {
+export function Card({ card, location, isSelected, onClick, onInfoClick, className, isInteractable = true, disableLift = false }: CardProps) {
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isInteractable || !onClick) return;
@@ -68,8 +69,10 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
         className={cn(
           baseStyles,
           "bg-zinc-800 border-amber-500 text-amber-100",
-          isInteractable && "cursor-pointer hover:-translate-y-2",
-          isSelected && "-translate-y-4 ring-4 ring-amber-400/50 shadow-2xl z-50",
+          isInteractable && !disableLift && "cursor-pointer hover:-translate-y-2",
+          isInteractable && disableLift && "cursor-pointer",
+          isSelected && !disableLift && "-translate-y-4 ring-4 ring-amber-400/50 shadow-2xl z-50",
+          isSelected && disableLift && "ring-4 ring-amber-400/50 shadow-2xl z-50",
           !isInteractable && "cursor-default opacity-90",
           className
         )}
@@ -106,8 +109,10 @@ export function Card({ card, location, isSelected, onClick, onInfoClick, classNa
       className={cn(
         baseStyles,
         specificStyles,
-        isInteractable && "cursor-pointer hover:-translate-y-2",
-        isSelected && "-translate-y-4 ring-4 ring-white/50 shadow-2xl z-50",
+        isInteractable && !disableLift && "cursor-pointer hover:-translate-y-2",
+        isInteractable && disableLift && "cursor-pointer",
+        isSelected && !disableLift && "-translate-y-4 ring-4 ring-white/50 shadow-2xl z-50",
+        isSelected && disableLift && "ring-4 ring-white/50 shadow-2xl z-50",
         !isInteractable && "cursor-default",
         className
       )}
