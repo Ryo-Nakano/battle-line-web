@@ -83,18 +83,53 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
       return;
     }
 
-    // Traitor handling
+    // Traitor handling (Step 1 & 2)
     if (activeGuileTactic?.type === TACTIC_IDS.TRAITOR) {
+      // Step 2: If already holding opponent's card, clicking on own board = placement destination
+      if (activeCard && activeCard.location.playerId === opponentID && activeCard.location.area === AREAS.BOARD) {
+        if (location.playerId === myID && location.area === AREAS.BOARD) {
+          moves.resolveTraitor({
+            targetCardId: activeCard.card.id,
+            targetLocation: activeCard.location,
+            toLocation: location
+          });
+          setActiveCard(null);
+        }
+        return;
+      }
+      // Step 1: Select opponent's troop card
       if (location.playerId === opponentID && location.area === AREAS.BOARD && card.type === CARD_TYPES.TROOP) {
         setActiveCard({ card, location });
       }
       return;
     }
 
+    // Redeploy handling (Step 1 & 2)
+    if (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY) {
+      // Step 2: If already holding own card, clicking on own board = placement destination
+      if (activeCard && activeCard.location.playerId === myID && activeCard.location.area === AREAS.BOARD) {
+        if (location.playerId === myID && location.area === AREAS.BOARD) {
+          moves.resolveRedeploy({
+            cardId: activeCard.card.id,
+            fromLocation: activeCard.location,
+            toLocation: location
+          });
+          setActiveCard(null);
+        }
+        return;
+      }
+      // Step 1: Select own card
+      if (location.playerId === myID && location.area === AREAS.BOARD) {
+        setActiveCard({ card, location });
+      }
+      return;
+    }
+
     // --- Improved Interaction: Place card on existing card click ---
-    // If holding a card from hand, and clicking on own board card, treat as placement
+    // If holding a card from hand OR board (played this turn), and clicking on own board card, treat as placement
     if (activeCard &&
-      activeCard.location.area === AREAS.HAND &&
+      (activeCard.location.area === AREAS.HAND ||
+        (activeCard.location.area === AREAS.BOARD && G.cardsPlayedThisTurn.includes(activeCard.card.id))) &&
       location.playerId === myID &&
       location.area === AREAS.BOARD &&
       !activeGuileTactic
@@ -106,6 +141,14 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
       });
       setActiveCard(null);
       return;
+    }
+
+    // --- 盤面の自分のカードをクリックした場合の制限 ---
+    // 手札からカードを選択中でない場合のみ、過去のカードは選択不可
+    if (location.area === AREAS.BOARD && location.playerId === myID) {
+      if (!G.cardsPlayedThisTurn.includes(card.id)) {
+        return;
+      }
     }
 
     if (location.playerId !== myID && location.area !== AREAS.BOARD && location.area !== AREAS.FIELD) return;
@@ -130,6 +173,21 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
           moves.resolveTraitor({
             targetCardId: activeCard.card.id,
             targetLocation: activeCard.location,
+            toLocation: toLocation
+          });
+          setActiveCard(null);
+        }
+      }
+      return;
+    }
+
+    // Redeploy destination
+    if (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY) {
+      if (activeCard.location.playerId === myID && activeCard.location.area === AREAS.BOARD) {
+        if (toLocation.playerId === myID && toLocation.area === AREAS.BOARD) {
+          moves.resolveRedeploy({
+            cardId: activeCard.card.id,
+            fromLocation: activeCard.location,
             toLocation: toLocation
           });
           setActiveCard(null);
@@ -237,6 +295,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
           )}
           {activeGuileTactic?.type === TACTIC_IDS.DESERTER && "DESERTER: Select opponent's card to discard"}
           {activeGuileTactic?.type === TACTIC_IDS.TRAITOR && "TRAITOR: Select opponent's troop then your slot"}
+          {activeGuileTactic?.type === TACTIC_IDS.REDEPLOY && "REDEPLOY: Select your card to move or discard"}
         </div>
       )}
 
@@ -259,6 +318,9 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                 activeGuileTactic?.type === TACTIC_IDS.DESERTER ||
                 activeGuileTactic?.type === TACTIC_IDS.TRAITOR
               );
+
+              const isOwnSlotInteractableForRedeploy = isMyTurn && !isSpectating && flag.owner === null &&
+                activeGuileTactic?.type === TACTIC_IDS.REDEPLOY;
 
               return (
                 <div key={flag.id} className="flex flex-col items-center justify-center relative h-[320px]">
@@ -307,12 +369,17 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                       id={`flag-${i}-${bottomSlotsKey}`}
                       cards={bottomCards}
                       type="slot"
-                      className="h-full justify-start bg-transparent scale-90 origin-top"
-                      isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR)}
+                      className={cn(
+                        "h-full justify-start bg-transparent scale-90 origin-top",
+                        isOwnSlotInteractableForRedeploy && !activeCard && "ring-1 ring-amber-500/50 bg-amber-500/5",
+                        isOwnSlotInteractableForRedeploy && activeCard && "ring-1 ring-green-500/50 bg-green-500/5"
+                      )}
+                      isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR || activeGuileTactic?.type === TACTIC_IDS.REDEPLOY)}
                       activeCardId={activeCard?.card.id}
                       isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && (
                         (!activeGuileTactic && (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))) ||
-                        (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID)
+                        (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID) ||
+                        (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY && activeCard.location.playerId === myID)
                       )}
                       onCardClick={handleCardClick}
                       onInfoClick={handleInfoClick}

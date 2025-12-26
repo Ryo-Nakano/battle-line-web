@@ -59,6 +59,7 @@ const cleanupTacticsField = (G) => {
 export const endTurn = ({ G, ctx, events }) => {
   cleanupTacticsField(G);
   G.hasPlayedCard = false;
+  G.cardsPlayedThisTurn = [];
   events.endTurn();
 };
 
@@ -160,6 +161,72 @@ export const resolveTraitor = ({ G, ctx }, { targetCardId, targetLocation, toLoc
   G.activeGuileTactic = null;
 };
 
+export const resolveRedeploy = ({ G, ctx }, { cardId, fromLocation, toLocation }) => {
+  if (!G.activeGuileTactic || G.activeGuileTactic.type !== TACTIC_IDS.REDEPLOY) return INVALID_MOVE;
+
+  const playerID = ctx.currentPlayer;
+
+  // 1. 対象カードの取得と検証
+  const sourceList = resolveLocation(G, ctx, fromLocation);
+  if (!sourceList) return INVALID_MOVE;
+
+  const cardIndex = sourceList.findIndex(c => c.id === cardId);
+  if (cardIndex === -1) return INVALID_MOVE;
+
+  // フラッグ確保済みチェック (移動元)
+  const sourceFlag = G.flags[fromLocation.flagIndex];
+  if (sourceFlag.owner !== null) return INVALID_MOVE;
+
+  // 自分のスロットか確認
+  const isMySlot = (playerID === PLAYER_IDS.P0 && (fromLocation.slotType === SLOTS.P0 || fromLocation.slotType === SLOTS.P0_TACTIC)) ||
+    (playerID === PLAYER_IDS.P1 && (fromLocation.slotType === SLOTS.P1 || fromLocation.slotType === SLOTS.P1_TACTIC));
+  if (!isMySlot) return INVALID_MOVE;
+
+  const card = sourceList.splice(cardIndex, 1)[0];
+
+  // 2. 移動先の処理
+  if (toLocation.area === AREAS.DISCARD) {
+    // 捨て札へ
+    if (card.type === CARD_TYPES.TROOP) {
+      G.troopDiscard.push(card);
+    } else {
+      G.tacticDiscard.push(card);
+    }
+  } else if (toLocation.area === AREAS.BOARD) {
+    // 別スロットへ
+    const destList = resolveLocation(G, ctx, toLocation);
+    if (!destList) {
+      // ロールバック
+      sourceList.push(card);
+      return INVALID_MOVE;
+    }
+
+    // フラッグ確保済みチェック (移動先)
+    const destFlag = G.flags[toLocation.flagIndex];
+    if (destFlag.owner !== null) {
+      sourceList.push(card);
+      return INVALID_MOVE;
+    }
+
+    // 自分のスロットかチェック
+    const isMyDestSlot = (playerID === PLAYER_IDS.P0 && (toLocation.slotType === SLOTS.P0 || toLocation.slotType === SLOTS.P0_TACTIC)) ||
+      (playerID === PLAYER_IDS.P1 && (toLocation.slotType === SLOTS.P1 || toLocation.slotType === SLOTS.P1_TACTIC));
+    if (!isMyDestSlot) {
+      sourceList.push(card);
+      return INVALID_MOVE;
+    }
+
+    destList.push(card);
+  } else {
+    // 手札への移動は禁止
+    sourceList.push(card);
+    return INVALID_MOVE;
+  }
+
+  // 状態クリア
+  G.activeGuileTactic = null;
+};
+
 export const drawCard = ({ G, ctx }, deckType) => {
   // スカウトモードのドロー制限チェック
   if (G.scoutDrawCount !== null && G.scoutDrawCount >= GAME_CONFIG.SCOUT_DRAW_LIMIT) {
@@ -200,6 +267,7 @@ export const drawAndEndTurn = ({ G, ctx, events }, deckType) => {
 
   cleanupTacticsField(G);
   G.hasPlayedCard = false;
+  G.cardsPlayedThisTurn = [];
 
   // ターン終了
   events.endTurn();
@@ -254,6 +322,13 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
 
     if (!isMySlot) {
       // 相手のスロットを触ろうとしたら弾く
+      return INVALID_MOVE;
+    }
+
+    // --- 過去のカードの移動禁止 ---
+    // 今ターンにプレイしたカードのみ移動可能
+    if (!G.cardsPlayedThisTurn.includes(cardId)) {
+      console.warn('Cannot move card played in previous turn.');
       return INVALID_MOVE;
     }
   }
@@ -335,8 +410,8 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
       G.scoutReturnCount = 0; // スカウト戻しカウンタ初期化
     }
 
-    // 裏切り・脱走の場合、アクティブ状態を設定
-    if (card.name === TACTIC_IDS.TRAITOR || card.name === TACTIC_IDS.DESERTER) {
+    // 裏切り・脱走・配置転換の場合、アクティブ状態を設定
+    if (card.name === TACTIC_IDS.TRAITOR || card.name === TACTIC_IDS.DESERTER || card.name === TACTIC_IDS.REDEPLOY) {
       G.activeGuileTactic = {
         type: card.name,
         cardId: card.id
@@ -410,6 +485,7 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
   // --- 手札からのプレイが成功した場合、hasPlayedCard を true に ---
   if (from.area === AREAS.HAND && (to.area === AREAS.BOARD || to.area === AREAS.FIELD)) {
     G.hasPlayedCard = true;
+    G.cardsPlayedThisTurn.push(cardId);
   }
 };
 

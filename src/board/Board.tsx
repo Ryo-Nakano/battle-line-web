@@ -269,18 +269,53 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
             return;
         }
 
-        // --- Special Handling for Traitor (Step 1: Opponent Card Selection) ---
+        // --- Special Handling for Traitor (Step 1 & 2) ---
         if (activeGuileTactic?.type === TACTIC_IDS.TRAITOR) {
+            // Step 2: If already holding opponent's card, clicking on own board = placement destination
+            if (activeCard && activeCard.location.playerId === opponentID && activeCard.location.area === AREAS.BOARD) {
+                if (location.playerId === myID && location.area === AREAS.BOARD) {
+                    moves.resolveTraitor({
+                        targetCardId: activeCard.card.id,
+                        targetLocation: activeCard.location,
+                        toLocation: location
+                    });
+                    setActiveCard(null);
+                }
+                return;
+            }
+            // Step 1: Select opponent's troop card
             if (location.playerId === opponentID && location.area === AREAS.BOARD && card.type === CARD_TYPES.TROOP) {
                 setActiveCard({ card, location });
             }
             return;
         }
 
+        // --- Special Handling for Redeploy (Step 1 & 2) ---
+        if (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY) {
+            // Step 2: If already holding own card, clicking on own board = placement destination
+            if (activeCard && activeCard.location.playerId === myID && activeCard.location.area === AREAS.BOARD) {
+                if (location.playerId === myID && location.area === AREAS.BOARD) {
+                    moves.resolveRedeploy({
+                        cardId: activeCard.card.id,
+                        fromLocation: activeCard.location,
+                        toLocation: location
+                    });
+                    setActiveCard(null);
+                }
+                return;
+            }
+            // Step 1: Select own card
+            if (location.playerId === myID && location.area === AREAS.BOARD) {
+                setActiveCard({ card, location });
+            }
+            return;
+        }
+
         // --- Improved Interaction: Place card on existing card click ---
-        // If holding a card from hand, and clicking on own board card, treat as placement
+        // If holding a card from hand OR board (played this turn), and clicking on own board card, treat as placement
         if (activeCard &&
-            activeCard.location.area === AREAS.HAND &&
+            (activeCard.location.area === AREAS.HAND ||
+                (activeCard.location.area === AREAS.BOARD && G.cardsPlayedThisTurn.includes(activeCard.card.id))) &&
             location.playerId === myID &&
             location.area === AREAS.BOARD &&
             !activeGuileTactic
@@ -292,6 +327,14 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
             });
             setActiveCard(null);
             return;
+        }
+
+        // --- 盤面の自分のカードをクリックした場合の制限 ---
+        // 手札からカードを選択中でない場合のみ、過去のカードは選択不可
+        if (location.area === AREAS.BOARD && location.playerId === myID) {
+            if (!G.cardsPlayedThisTurn.includes(card.id)) {
+                return;
+            }
         }
 
         // Normal interaction (prevent selecting opponent cards usually)
@@ -319,6 +362,23 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                     moves.resolveTraitor({
                         targetCardId: activeCard.card.id,
                         targetLocation: activeCard.location,
+                        toLocation: toLocation
+                    });
+                    setActiveCard(null);
+                }
+            }
+            return;
+        }
+
+        // --- Special Handling for Redeploy (Step 2: Destination Selection) ---
+        if (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY) {
+            // Must have selected my own card first
+            if (activeCard.location.playerId === myID && activeCard.location.area === AREAS.BOARD) {
+                // Can move to own board slot or discard
+                if (toLocation.playerId === myID && toLocation.area === AREAS.BOARD) {
+                    moves.resolveRedeploy({
+                        cardId: activeCard.card.id,
+                        fromLocation: activeCard.location,
                         toLocation: toLocation
                     });
                     setActiveCard(null);
@@ -478,6 +538,10 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                 (activeGuileTactic?.type === TACTIC_IDS.TRAITOR)
                             );
 
+                            // Determine interactivity for own zones during Redeploy
+                            const isOwnSlotInteractableForRedeploy = isMyTurn && !isSpectating && flag.owner === null &&
+                                activeGuileTactic?.type === TACTIC_IDS.REDEPLOY;
+
                             return (
                                 <div key={flag.id} className="flex flex-col items-center justify-center relative group h-[380px] sm:h-[450px] lg:h-[500px]">
                                     {/* Top Area (Opponent) */}
@@ -532,15 +596,21 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                             id={`flag-${i}-${bottomSlotsKey}`}
                                             cards={bottomCards}
                                             type="slot"
-                                            className="h-full justify-start bg-transparent"
-                                            isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR)}
+                                            className={cn(
+                                                "h-full justify-start bg-transparent",
+                                                isOwnSlotInteractableForRedeploy && !activeCard && "ring-2 ring-amber-500/50 cursor-pointer bg-amber-500/5",
+                                                isOwnSlotInteractableForRedeploy && activeCard && "ring-2 ring-green-500/50 cursor-pointer bg-green-500/5"
+                                            )}
+                                            isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR || activeGuileTactic?.type === TACTIC_IDS.REDEPLOY)}
                                             activeCardId={activeCard?.card.id}
                                             isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null &&
                                                 (
                                                     // Normal placement logic
                                                     (!activeGuileTactic && (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))) ||
                                                     // Traitor destination logic
-                                                    (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID)
+                                                    (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID) ||
+                                                    // Redeploy destination logic
+                                                    (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY && activeCard.location.playerId === myID)
                                                 )
                                             }
                                             onCardClick={handleCardClick}
@@ -675,10 +745,14 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                             {activeGuileTactic && (
                                 <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-red-700 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] z-50 font-bold border-2 border-red-500 whitespace-nowrap flex items-center gap-4">
                                     <Info size={18} />
-                                    {activeGuileTactic.type === TACTIC_IDS.DESERTER ? (
+                                    {activeGuileTactic.type === TACTIC_IDS.DESERTER && (
                                         <span>DESERTER: Select an opponent's card to discard!</span>
-                                    ) : (
+                                    )}
+                                    {activeGuileTactic.type === TACTIC_IDS.TRAITOR && (
                                         <span>TRAITOR: Select opponent's troop &rarr; Place in your slot!</span>
+                                    )}
+                                    {activeGuileTactic.type === TACTIC_IDS.REDEPLOY && (
+                                        <span>REDEPLOY: Select your card to move or discard!</span>
                                     )}
                                 </div>
                             )}
