@@ -7,10 +7,11 @@ interface DeckPileProps {
   type: string;
   onClick: () => void;
   isDisabled?: boolean;
+  isHighlighted?: boolean;
   className?: string;
 }
 
-export const DeckPile = ({ count, type, onClick, isDisabled, className }: DeckPileProps) => {
+export const DeckPile = ({ count, type, onClick, isDisabled, isHighlighted, className }: DeckPileProps) => {
   // ダミーのカードデータ
   const dummyCard = {
     id: `deck-${type}`,
@@ -29,7 +30,10 @@ export const DeckPile = ({ count, type, onClick, isDisabled, className }: DeckPi
       )}
       onClick={!isDisabled ? onClick : undefined}
     >
-      <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+      <div className={cn(
+        "text-[10px] font-bold uppercase tracking-wider",
+        isHighlighted ? "text-amber-400" : "text-zinc-500"
+      )}>
         {label}
       </div>
 
@@ -47,14 +51,16 @@ export const DeckPile = ({ count, type, onClick, isDisabled, className }: DeckPi
             {/* Main Card */}
             <div className={cn(
               "relative transition-transform duration-200",
-              !isDisabled && "cursor-pointer group-hover:-translate-y-1"
+              !isDisabled && "cursor-pointer group-hover:-translate-y-1",
+              isHighlighted && "animate-pulse"
             )}>
               <Card
                 card={dummyCard}
                 isInteractable={false}
                 className={cn(
                   "shadow-xl border-zinc-600",
-                  !isDisabled && "group-hover:ring-2 group-hover:ring-amber-500/50 transition-all"
+                  !isDisabled && "group-hover:ring-2 group-hover:ring-amber-500/50 transition-all",
+                  isHighlighted && "ring-4 ring-amber-400"
                 )}
               />
             </div>

@@ -55,6 +55,7 @@ export interface GameState {
   };
   startPlayer: string | null;
   playerNames: { [playerID: string]: string | null };
+  hasPlayedCard: boolean;
 }
 
 export type LocationInfo = {

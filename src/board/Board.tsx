@@ -11,7 +11,7 @@ import { CardHelpModal } from './CardHelpModal';
 import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { Sword, Shield, Info, CheckCircle2, Menu, XCircle, Copy } from 'lucide-react';
+import { Sword, Shield, Info, CheckCircle2, Menu, Copy } from 'lucide-react';
 import { cn } from '../utils';
 import { MobileBoard } from './MobileBoard';
 import { isEnvironmentTactic } from '../constants/tactics';
@@ -253,6 +253,11 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
     const handleCardClick = (card: CardType, location?: LocationInfo) => {
         if (!isMyTurn || isSpectating || !location) return;
 
+        // --- カードプレイ済みの場合、手札からの選択を無効化（スカウトモード中は除く） ---
+        if (G.hasPlayedCard && location.area === AREAS.HAND && G.scoutDrawCount === null) {
+            return;
+        }
+
         // --- Special Handling for Deserter (Opponent Card Selection) ---
         if (activeGuileTactic?.type === TACTIC_IDS.DESERTER) {
             if (location.playerId === opponentID && location.area === AREAS.BOARD) {
@@ -384,20 +389,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
         }
     };
 
-    const handleHandClick = () => {
-        if (!isMyTurn || isSpectating || !activeCard) return;
-        // Prevent moving back to hand during Traitor resolution
-        if (activeGuileTactic) return;
-
-        if (activeCard.location.area === AREAS.BOARD) {
-            moves.moveCard({
-                cardId: activeCard.card.id,
-                from: activeCard.location,
-                to: { area: AREAS.HAND, playerId: myID }
-            });
-            setActiveCard(null);
-        }
-    };
+    // handleHandClick は削除（盤面から手札への移動は禁止）
 
     // ターン終了ボタンの有効化条件
     const canEndTurn = isMyTurn && !activeGuileTactic && (!isScoutMode || (
@@ -592,12 +584,14 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                 type={DECK_TYPES.TROOP}
                                 onClick={() => handleDeckClick(DECK_TYPES.TROOP)}
                                 isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TROOP}
                             />
                             <DeckPile
                                 count={G.tacticDeck.length}
                                 type={DECK_TYPES.TACTIC}
                                 onClick={() => handleDeckClick(DECK_TYPES.TACTIC)}
                                 isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TACTIC}
                             />
                         </div>
 
@@ -607,7 +601,8 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                 "px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-1 text-sm transition-all transform active:scale-95",
                                 canEndTurn
                                     ? "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20"
-                                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
+                                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700",
+                                canEndTurn && G.hasPlayedCard && "ring-4 ring-amber-400 animate-pulse"
                             )}
                             onClick={() => {
                                 if (!canEndTurn) return;
@@ -635,12 +630,14 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                     type={DECK_TYPES.TROOP}
                                     onClick={() => handleDeckClick(DECK_TYPES.TROOP)}
                                     isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                    isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TROOP}
                                 />
                                 <DeckPile
                                     count={G.tacticDeck.length}
                                     type={DECK_TYPES.TACTIC}
                                     onClick={() => handleDeckClick(DECK_TYPES.TACTIC)}
                                     isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                    isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TACTIC}
                                 />
                             </div>
 
@@ -683,15 +680,6 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                     ) : (
                                         <span>TRAITOR: Select opponent's troop &rarr; Place in your slot!</span>
                                     )}
-                                    <button
-                                        onClick={() => {
-                                            moves.cancelGuileTactic();
-                                            setActiveCard(null);
-                                        }}
-                                        className="bg-white/20 hover:bg-white/40 p-1 rounded-full transition-colors"
-                                    >
-                                        <XCircle size={20} />
-                                    </button>
                                 </div>
                             )}
 
@@ -723,9 +711,8 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                 activeCardId={activeCard?.card.id}
                                 onCardClick={handleCardClick}
                                 onInfoClick={handleInfoClick}
-                                onHandClick={handleHandClick}
                                 onSort={() => moves.sortHand()}
-                                className={cn(activeGuileTactic ? "opacity-50 pointer-events-none" : "")}
+                                className={cn((activeGuileTactic || (G.hasPlayedCard && !isScoutMode)) ? "opacity-50 pointer-events-none" : "")}
                             />
                         </div>
 
@@ -736,7 +723,8 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                     "px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all transform active:scale-95",
                                     canEndTurn
                                         ? "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20"
-                                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
+                                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700",
+                                    canEndTurn && G.hasPlayedCard && "ring-4 ring-amber-400 animate-pulse"
                                 )}
                                 onClick={() => {
                                     if (!canEndTurn) return;

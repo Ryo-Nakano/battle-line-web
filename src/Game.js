@@ -20,7 +20,6 @@ import {
   sortHand,
   resolveDeserter,
   resolveTraitor,
-  cancelGuileTactic,
   pickCard,
   chooseOrder
 } from './moves.js';
@@ -102,6 +101,7 @@ export const BattleLine = {
       },
       startPlayer: null,
       playerNames: { [PLAYER_IDS.P0]: null, [PLAYER_IDS.P1]: null },
+      hasPlayedCard: false,
     };
   },
 
@@ -135,7 +135,6 @@ export const BattleLine = {
         sortHand,
         resolveDeserter,
         resolveTraitor,
-        cancelGuileTactic,
         setName: {
           move: ({ G, playerID }, name) => {
             G.playerNames[playerID] = name;

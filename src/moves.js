@@ -58,6 +58,7 @@ const cleanupTacticsField = (G) => {
 
 export const endTurn = ({ G, ctx, events }) => {
   cleanupTacticsField(G);
+  G.hasPlayedCard = false;
   events.endTurn();
 };
 
@@ -90,26 +91,7 @@ export const sortHand = ({ G, ctx }) => {
   });
 };
 
-export const cancelGuileTactic = ({ G, ctx }) => {
-  if (!G.activeGuileTactic) return INVALID_MOVE;
 
-  const playerID = ctx.currentPlayer;
-  const field = G.tacticsField[playerID];
-  const cardIndex = field.findIndex(c => c.id === G.activeGuileTactic.cardId);
-
-  if (cardIndex !== -1) {
-    const card = field.splice(cardIndex, 1)[0];
-    G.players[playerID].hand.push(card);
-  }
-
-  G.activeGuileTactic = null;
-
-  // Scout state cleanup if cancelled scout (though unlikely to use this generic cancel for scout)
-  if (G.scoutDrawCount !== null) {
-    G.scoutDrawCount = null;
-    G.scoutReturnCount = null;
-  }
-};
 
 export const resolveDeserter = ({ G, ctx }, { targetCardId, targetLocation }) => {
   if (!G.activeGuileTactic || G.activeGuileTactic.type !== TACTIC_IDS.DESERTER) return INVALID_MOVE;
@@ -217,6 +199,7 @@ export const drawAndEndTurn = ({ G, ctx, events }, deckType) => {
   }
 
   cleanupTacticsField(G);
+  G.hasPlayedCard = false;
 
   // ターン終了
   events.endTurn();
@@ -238,6 +221,14 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
   if (G.scoutDrawCount !== null) {
     if (to.area !== AREAS.DECK) {
       console.warn('Cannot perform non-deck moves during Scout mode.');
+      return INVALID_MOVE;
+    }
+  }
+
+  // --- 1ターン1枚制限: 手札からのプレイをチェック ---
+  if (from.area === AREAS.HAND && (to.area === AREAS.BOARD || to.area === AREAS.FIELD)) {
+    if (G.hasPlayedCard) {
+      console.warn('Already played a card this turn.');
       return INVALID_MOVE;
     }
   }
@@ -269,15 +260,9 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
 
   // 2. 移動先のチェック (自分の陣地か？)
   if (to.area === AREAS.HAND) {
-    // 盤面から手札に戻すことを許可（再配置やミスクリック修正のため）
-    if (from.area !== AREAS.BOARD) {
-      // デッキや捨て札からは戻せない
-      return INVALID_MOVE;
-    }
-    // 自分の手札に戻すかチェック
-    if (to.playerId && to.playerId !== playerID) {
-      return INVALID_MOVE;
-    }
+    // --- 盤面/フィールドから手札への移動は完全禁止 ---
+    console.warn('Moving cards to hand is not allowed.');
+    return INVALID_MOVE;
   } else if (to.area === AREAS.BOARD) {
     // --- フラッグ確保済みチェック (移動先) ---
     const flag = G.flags[to.flagIndex];
@@ -421,6 +406,11 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
 
   // 移動先に追加
   targetList.push(card);
+
+  // --- 手札からのプレイが成功した場合、hasPlayedCard を true に ---
+  if (from.area === AREAS.HAND && (to.area === AREAS.BOARD || to.area === AREAS.FIELD)) {
+    G.hasPlayedCard = true;
+  }
 };
 
 export const claimFlag = ({ G, ctx }, flagIndex) => {

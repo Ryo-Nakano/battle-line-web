@@ -13,6 +13,7 @@ interface MobileGameInfoProps {
   onDeckClick?: (type: 'troop' | 'tactic') => void;
   onDiscardClick?: (type: 'troop' | 'tactic') => void;
   isDeckClickable?: boolean;
+  highlightedDeckType?: 'troop' | 'tactic' | null;
 }
 
 export function MobileGameInfo({
@@ -26,7 +27,8 @@ export function MobileGameInfo({
   isMyTurn,
   onDeckClick,
   onDiscardClick,
-  isDeckClickable = false
+  isDeckClickable = false,
+  highlightedDeckType = null
 }: MobileGameInfoProps) {
   return (
     <div className="flex items-center justify-between px-2 py-1.5 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800 text-xs">
@@ -63,23 +65,25 @@ export function MobileGameInfo({
             onClick={() => onDeckClick?.('troop')}
             disabled={!isDeckClickable}
             className={cn(
-              "flex items-center gap-1 px-1.5 py-0.5 rounded",
-              isDeckClickable ? "hover:bg-zinc-800 cursor-pointer" : "cursor-default"
+              "flex items-center gap-1 px-1.5 py-0.5 rounded transition-all",
+              isDeckClickable ? "hover:bg-zinc-800 cursor-pointer" : "cursor-default",
+              highlightedDeckType === 'troop' && "ring-2 ring-amber-400 bg-amber-400/20 animate-pulse"
             )}
           >
-            <Layers size={12} className="text-blue-400" />
-            <span className="text-zinc-300">{troopDeckCount}</span>
+            <Layers size={12} className={cn("text-blue-400", highlightedDeckType === 'troop' && "text-amber-400")} />
+            <span className={cn("text-zinc-300", highlightedDeckType === 'troop' && "text-amber-400 font-bold")}>{troopDeckCount}</span>
           </button>
           <button
             onClick={() => onDeckClick?.('tactic')}
             disabled={!isDeckClickable}
             className={cn(
-              "flex items-center gap-1 px-1.5 py-0.5 rounded",
-              isDeckClickable ? "hover:bg-zinc-800 cursor-pointer" : "cursor-default"
+              "flex items-center gap-1 px-1.5 py-0.5 rounded transition-all",
+              isDeckClickable ? "hover:bg-zinc-800 cursor-pointer" : "cursor-default",
+              highlightedDeckType === 'tactic' && "ring-2 ring-amber-400 bg-amber-400/20 animate-pulse"
             )}
           >
-            <Layers size={12} className="text-amber-400" />
-            <span className="text-zinc-300">{tacticDeckCount}</span>
+            <Layers size={12} className={cn("text-amber-400", highlightedDeckType === 'tactic' && "text-amber-300")} />
+            <span className={cn("text-zinc-300", highlightedDeckType === 'tactic' && "text-amber-400 font-bold")}>{tacticDeckCount}</span>
           </button>
         </div>
 

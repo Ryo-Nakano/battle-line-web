@@ -9,7 +9,7 @@ import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { CheckCircle2, Info, XCircle, Zap } from 'lucide-react';
+import { CheckCircle2, Info, Zap } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic } from '../constants/tactics';
 import {
@@ -66,6 +66,11 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
 
   const handleCardClick = (card: CardType, location?: LocationInfo) => {
     if (!isMyTurn || isSpectating || !location) return;
+
+    // --- カードプレイ済みの場合、手札からの選択を無効化（スカウトモード中は除く） ---
+    if (G.hasPlayedCard && location.area === AREAS.HAND && !isScoutMode) {
+      return;
+    }
 
     // Deserter handling
     if (activeGuileTactic?.type === TACTIC_IDS.DESERTER) {
@@ -211,6 +216,11 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
         onDeckClick={isScoutMode ? handleDeckClick : undefined}
         onDiscardClick={handleDiscardClick}
         isDeckClickable={isScoutMode}
+        highlightedDeckType={
+          isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard
+            ? (activeCard.card.type === CARD_TYPES.TROOP ? 'troop' : activeCard.card.type === CARD_TYPES.TACTIC ? 'tactic' : null)
+            : null
+        }
       />
 
       {/* 警告メッセージ */}
@@ -220,24 +230,13 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
           activeGuileTactic ? "bg-red-700/80 text-white" : "bg-amber-600/80 text-white"
         )}>
           <Info size={14} />
-          {activeGuileTactic?.type === TACTIC_IDS.DESERTER && "DESERTER: Select opponent's card to discard"}
-          {activeGuileTactic?.type === TACTIC_IDS.TRAITOR && "TRAITOR: Select opponent's troop then your slot"}
           {isScoutMode && !activeGuileTactic && (
             G.scoutDrawCount !== null && G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT
               ? `SCOUT: Draw ${GAME_CONFIG.SCOUT_DRAW_LIMIT - G.scoutDrawCount} more card(s)`
               : `SCOUT: Return ${GAME_CONFIG.SCOUT_RETURN_LIMIT - scoutReturnCount} card(s) to deck`
           )}
-          {activeGuileTactic && (
-            <button
-              onClick={() => {
-                moves.cancelGuileTactic();
-                setActiveCard(null);
-              }}
-              className="p-0.5 hover:bg-white/20 rounded-full"
-            >
-              <XCircle size={14} />
-            </button>
-          )}
+          {activeGuileTactic?.type === TACTIC_IDS.DESERTER && "DESERTER: Select opponent's card to discard"}
+          {activeGuileTactic?.type === TACTIC_IDS.TRAITOR && "TRAITOR: Select opponent's troop then your slot"}
         </div>
       )}
 
@@ -352,7 +351,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
               onCardClick={handleCardClick}
               onInfoClick={handleInfoClick}
               onSort={() => moves.sortHand()}
-              disabled={isSpectating || !!activeGuileTactic}
+              disabled={isSpectating || !!activeGuileTactic || (G.hasPlayedCard && !isScoutMode)}
             />
           </div>
 
@@ -373,7 +372,8 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
               "px-3 py-2 rounded-lg font-bold shadow-lg flex items-center gap-1 text-sm transition-all",
               canEndTurn
                 ? "bg-amber-600 hover:bg-amber-500 text-white"
-                : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
+                : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700",
+              canEndTurn && G.hasPlayedCard && "ring-4 ring-amber-400 animate-pulse"
             )}
             onClick={() => {
               if (!canEndTurn) return;
