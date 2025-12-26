@@ -302,7 +302,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
       {/* メイン: 戦場エリア（横スクロール） */}
       <main className="flex-1 overflow-x-auto overflow-y-auto py-2">
         <div className="flex justify-start items-center px-2 min-w-max">
-          <div className="grid grid-cols-9 gap-1">
+          <div className="grid grid-cols-9 gap-0.5">
             {G.flags.map((flag, i) => {
               const topSlotsKey = isInverted ? SLOTS.P0 : SLOTS.P1;
               const bottomSlotsKey = isInverted ? SLOTS.P1 : SLOTS.P0;
@@ -323,15 +323,16 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                 activeGuileTactic?.type === TACTIC_IDS.REDEPLOY;
 
               return (
-                <div key={flag.id} className="flex flex-col items-center justify-center relative h-[320px]">
+                <div key={flag.id} className="flex flex-col items-center justify-center relative h-[260px]">
                   {/* 相手エリア */}
-                  <div className="flex-1 w-full flex flex-col justify-end pb-1 min-h-0">
+                  <div className="flex-1 w-full flex flex-col justify-end pb-0 min-h-0">
                     <Zone
                       id={`flag-${i}-${topTacticSlotsKey}`}
                       cards={topTacticCards}
                       type="slot"
-                      className="h-16 min-h-[40px] justify-end border-none bg-transparent scale-75 opacity-60"
+                      className="h-8 min-h-[24px] justify-end border-none bg-transparent scale-[0.6] -mb-6"
                       isInteractable={isOpponentSlotInteractable && activeGuileTactic?.type === TACTIC_IDS.DESERTER}
+                      showPlaceHere={false}
                       onCardClick={handleCardClick}
                       onInfoClick={handleInfoClick}
                     />
@@ -340,10 +341,11 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                       cards={topCards}
                       type="slot"
                       className={cn(
-                        "h-full justify-end border-none bg-transparent scale-90 origin-bottom",
+                        "h-full justify-end border-none bg-transparent scale-[0.75] origin-bottom",
                         isOpponentSlotInteractable && "ring-1 ring-red-500/50 bg-red-500/5"
                       )}
                       isInteractable={isOpponentSlotInteractable}
+                      showPlaceHere={false}
                       onCardClick={handleCardClick}
                       onInfoClick={handleInfoClick}
                     />
@@ -364,13 +366,13 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                   </div>
 
                   {/* 自分エリア */}
-                  <div className="flex-1 w-full flex flex-col justify-start pt-1 min-h-0">
+                  <div className="flex-1 w-full flex flex-col justify-start pt-0 min-h-0">
                     <Zone
                       id={`flag-${i}-${bottomSlotsKey}`}
                       cards={bottomCards}
                       type="slot"
                       className={cn(
-                        "h-full justify-start bg-transparent scale-90 origin-top",
+                        "h-full justify-start bg-transparent scale-[0.75] origin-top",
                         isOwnSlotInteractableForRedeploy && !activeCard && "ring-1 ring-amber-500/50 bg-amber-500/5",
                         isOwnSlotInteractableForRedeploy && activeCard && "ring-1 ring-green-500/50 bg-green-500/5"
                       )}
@@ -381,6 +383,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                         (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID) ||
                         (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY && activeCard.location.playerId === myID)
                       )}
+                      showPlaceHere={false}
                       onCardClick={handleCardClick}
                       onInfoClick={handleInfoClick}
                       onZoneClick={handleZoneClick}
@@ -389,11 +392,12 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
                       id={`flag-${i}-${bottomTacticSlotsKey}`}
                       cards={bottomTacticCards}
                       type="slot"
-                      className="h-16 min-h-[40px] justify-start bg-transparent scale-75"
+                      className="h-8 min-h-[24px] justify-start bg-transparent scale-[0.6] -mt-6"
                       isInteractable={!isSpectating && flag.owner === null && !isScoutMode && !activeGuileTactic}
                       activeCardId={activeCard?.card.id}
                       isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null && !activeGuileTactic &&
                         activeCard.card.type === CARD_TYPES.TACTIC && isEnvironmentTactic(activeCard.card.name)}
+                      showPlaceHere={false}
                       onCardClick={handleCardClick}
                       onInfoClick={handleInfoClick}
                       onZoneClick={handleZoneClick}

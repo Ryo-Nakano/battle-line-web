@@ -15,6 +15,7 @@ interface ZoneProps {
   isInteractable?: boolean;
   activeCardId?: string;
   isTargeted?: boolean; // 配置候補としてハイライトするか
+  showPlaceHere?: boolean; // Place Here テキストを表示するか（デフォルト: true）
   onCardClick?: (card: CardType, location?: LocationInfo) => void;
   onInfoClick?: (card: CardType) => void;
   onZoneClick?: (location: LocationInfo) => void;
@@ -30,6 +31,7 @@ export function Zone({
   isInteractable = true,
   activeCardId,
   isTargeted = false,
+  showPlaceHere = true,
   onCardClick,
   onInfoClick,
   onZoneClick
@@ -50,7 +52,7 @@ export function Zone({
       className={cn(
         "relative transition-all duration-300 rounded-xl p-1 sm:p-2",
         // Base layout - レスポンシブ対応
-        orientation === 'vertical' ? "flex flex-col items-center pt-2 pb-2 min-h-[100px] sm:min-h-[140px] w-[68px] sm:w-20 lg:w-24" : "flex flex-row items-center px-2 sm:px-4 min-h-[90px] sm:min-h-[110px]",
+        orientation === 'vertical' ? "flex flex-col items-center pt-1 pb-1 min-h-[40px] sm:min-h-[140px] w-[56px] sm:w-[68px] lg:w-24" : "flex flex-row items-center px-2 sm:px-4 min-h-[40px] sm:min-h-[110px]",
         // Interactive visual cue
         isInteractable && "cursor-pointer hover:bg-white/5 hover:ring-1 hover:ring-white/20",
         // Empty state styling
@@ -91,7 +93,7 @@ export function Zone({
           "absolute inset-0 flex items-center justify-center transition-opacity pointer-events-none",
           isTargeted ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
-          {isTargeted ? (
+          {isTargeted && showPlaceHere ? (
             <div className="w-full h-full rounded-lg flex items-center justify-center">
               <span className="text-amber-500 text-[10px] font-bold uppercase tracking-widest animate-bounce">
                 Place Here
