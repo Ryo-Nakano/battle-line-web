@@ -4,15 +4,15 @@ import { cn } from '../utils';
 import { ArrowUpDown } from 'lucide-react';
 
 interface HandProps {
-  cards: CardType[];
-  playerId: string;
-  isCurrentPlayer: boolean;
-  activeCardId?: string;
-  onCardClick?: (card: CardType, location?: LocationInfo) => void;
-  onInfoClick?: (card: CardType) => void;
-  onHandClick?: (location: LocationInfo) => void;
-  onSort?: () => void;
-  className?: string;
+    cards: CardType[];
+    playerId: string;
+    isCurrentPlayer: boolean;
+    activeCardId?: string;
+    onCardClick?: (card: CardType, location?: LocationInfo) => void;
+    onInfoClick?: (card: CardType) => void;
+    onHandClick?: (location: LocationInfo) => void;
+    onSort?: () => void;
+    className?: string;
 }
 
 export function Hand({ cards, playerId, isCurrentPlayer, activeCardId, onCardClick, onInfoClick, onHandClick, onSort, className }: HandProps) {
@@ -47,7 +47,7 @@ export function Hand({ cards, playerId, isCurrentPlayer, activeCardId, onCardCli
                 onZoneClick={onHandClick}
                 orientation="horizontal"
                 className={cn(
-                    "w-full overflow-x-auto min-h-[120px] justify-center items-center pb-2 gap-2",
+                    "w-full overflow-x-auto min-h-[100px] sm:min-h-[120px] justify-start sm:justify-center items-center pb-2 gap-1 sm:gap-2 px-2",
                     "border-none bg-zinc-900/40 backdrop-blur-md rounded-2xl border border-white/5 shadow-2xl"
                 )}
             />
