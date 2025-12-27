@@ -11,8 +11,9 @@ import { CardHelpModal } from './CardHelpModal';
 import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { Sword, Shield, Info, CheckCircle2, Menu, XCircle, Copy } from 'lucide-react';
+import { Sword, Shield, Info, CheckCircle2, Menu, Copy } from 'lucide-react';
 import { cn } from '../utils';
+import { MobileBoard } from './MobileBoard';
 import { isEnvironmentTactic } from '../constants/tactics';
 import {
     PLAYER_IDS,
@@ -59,8 +60,8 @@ const MiniGame = ({ G, moves, playerID, playerNames, matchID }: MiniGameProps) =
     );
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black">
-            <h1 className="text-3xl font-bold mb-4 text-amber-500 tracking-widest uppercase">Determine Start Player</h1>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black p-4 overflow-auto">
+            <h1 className="text-xl sm:text-3xl font-bold mb-4 text-amber-500 tracking-widest uppercase">Determine Start Player</h1>
 
             <div className="flex justify-between w-full max-w-2xl mb-8 px-8">
                 <div className="text-center">
@@ -194,13 +195,24 @@ const MiniGame = ({ G, moves, playerID, playerNames, matchID }: MiniGameProps) =
     );
 };
 
-export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }: BattleLineBoardProps) => {
+export const BattleLineBoard = (props: BattleLineBoardProps) => {
+    const { G, ctx, moves, playerID, playerName, matchID } = props;
     const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
     const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
     const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
     const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
     const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
     const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
+
+    // モバイル判定用のstate（1024px未満でモバイルUI）
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
+
+    // 画面リサイズ監視
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Sync player name
     useEffect(() => {
@@ -211,6 +223,11 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
 
     if (ctx.phase === PHASES.DETERMINATION) {
         return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} playerNames={G.playerNames} matchID={matchID} />;
+    }
+
+    // スマホ版UIへの切り替え
+    if (isMobile) {
+        return <MobileBoard {...props} />;
     }
 
     const currentPlayerID = playerID || PLAYER_IDS.P0;
@@ -236,6 +253,11 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
     const handleCardClick = (card: CardType, location?: LocationInfo) => {
         if (!isMyTurn || isSpectating || !location) return;
 
+        // --- カードプレイ済みの場合、手札からの選択を無効化（スカウトモード中は除く） ---
+        if (G.hasPlayedCard && location.area === AREAS.HAND && G.scoutDrawCount === null) {
+            return;
+        }
+
         // --- Special Handling for Deserter (Opponent Card Selection) ---
         if (activeGuileTactic?.type === TACTIC_IDS.DESERTER) {
             if (location.playerId === opponentID && location.area === AREAS.BOARD) {
@@ -247,12 +269,72 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
             return;
         }
 
-        // --- Special Handling for Traitor (Step 1: Opponent Card Selection) ---
+        // --- Special Handling for Traitor (Step 1 & 2) ---
         if (activeGuileTactic?.type === TACTIC_IDS.TRAITOR) {
+            // Step 2: If already holding opponent's card, clicking on own board = placement destination
+            if (activeCard && activeCard.location.playerId === opponentID && activeCard.location.area === AREAS.BOARD) {
+                if (location.playerId === myID && location.area === AREAS.BOARD) {
+                    moves.resolveTraitor({
+                        targetCardId: activeCard.card.id,
+                        targetLocation: activeCard.location,
+                        toLocation: location
+                    });
+                    setActiveCard(null);
+                }
+                return;
+            }
+            // Step 1: Select opponent's troop card
             if (location.playerId === opponentID && location.area === AREAS.BOARD && card.type === CARD_TYPES.TROOP) {
                 setActiveCard({ card, location });
             }
             return;
+        }
+
+        // --- Special Handling for Redeploy (Step 1 & 2) ---
+        if (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY) {
+            // Step 2: If already holding own card, clicking on own board = placement destination
+            if (activeCard && activeCard.location.playerId === myID && activeCard.location.area === AREAS.BOARD) {
+                if (location.playerId === myID && location.area === AREAS.BOARD) {
+                    moves.resolveRedeploy({
+                        cardId: activeCard.card.id,
+                        fromLocation: activeCard.location,
+                        toLocation: location
+                    });
+                    setActiveCard(null);
+                }
+                return;
+            }
+            // Step 1: Select own card
+            if (location.playerId === myID && location.area === AREAS.BOARD) {
+                setActiveCard({ card, location });
+            }
+            return;
+        }
+
+        // --- Improved Interaction: Place card on existing card click ---
+        // If holding a card from hand OR board (played this turn), and clicking on own board card, treat as placement
+        if (activeCard &&
+            (activeCard.location.area === AREAS.HAND ||
+                (activeCard.location.area === AREAS.BOARD && G.cardsPlayedThisTurn.includes(activeCard.card.id))) &&
+            location.playerId === myID &&
+            location.area === AREAS.BOARD &&
+            !activeGuileTactic
+        ) {
+            moves.moveCard({
+                cardId: activeCard.card.id,
+                from: activeCard.location,
+                to: location
+            });
+            setActiveCard(null);
+            return;
+        }
+
+        // --- 盤面の自分のカードをクリックした場合の制限 ---
+        // 手札からカードを選択中でない場合のみ、過去のカードは選択不可
+        if (location.area === AREAS.BOARD && location.playerId === myID) {
+            if (!G.cardsPlayedThisTurn.includes(card.id)) {
+                return;
+            }
         }
 
         // Normal interaction (prevent selecting opponent cards usually)
@@ -280,6 +362,23 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                     moves.resolveTraitor({
                         targetCardId: activeCard.card.id,
                         targetLocation: activeCard.location,
+                        toLocation: toLocation
+                    });
+                    setActiveCard(null);
+                }
+            }
+            return;
+        }
+
+        // --- Special Handling for Redeploy (Step 2: Destination Selection) ---
+        if (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY) {
+            // Must have selected my own card first
+            if (activeCard.location.playerId === myID && activeCard.location.area === AREAS.BOARD) {
+                // Can move to own board slot or discard
+                if (toLocation.playerId === myID && toLocation.area === AREAS.BOARD) {
+                    moves.resolveRedeploy({
+                        cardId: activeCard.card.id,
+                        fromLocation: activeCard.location,
                         toLocation: toLocation
                     });
                     setActiveCard(null);
@@ -350,20 +449,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
         }
     };
 
-    const handleHandClick = () => {
-        if (!isMyTurn || isSpectating || !activeCard) return;
-        // Prevent moving back to hand during Traitor resolution
-        if (activeGuileTactic) return;
-
-        if (activeCard.location.area === AREAS.BOARD) {
-            moves.moveCard({
-                cardId: activeCard.card.id,
-                from: activeCard.location,
-                to: { area: AREAS.HAND, playerId: myID }
-            });
-            setActiveCard(null);
-        }
-    };
+    // handleHandClick は削除（盤面から手札への移動は禁止）
 
     // ターン終了ボタンの有効化条件
     const canEndTurn = isMyTurn && !activeGuileTactic && (!isScoutMode || (
@@ -375,8 +461,8 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black">
 
-            {/* ■ HEADER: Opponent Area */}
-            <header className="flex-none flex justify-between items-start p-4 z-10">
+            {/* ■ HEADER: Opponent Area - レスポンシブ対応 */}
+            <header className="flex-none flex justify-between items-start p-2 sm:p-4 z-10">
                 <div className="flex gap-4 items-center">
                     <div className="bg-zinc-800/80 backdrop-blur-sm p-2 rounded-lg border border-zinc-700 flex items-center gap-3 shadow-lg">
                         <div className={cn("w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center shadow-inner", opponentID === PLAYER_IDS.P0 ? 'bg-red-700' : 'bg-blue-700')}>
@@ -431,10 +517,10 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                 </div>
             </header>
 
-            {/* ■ MAIN: Battlefield Area */}
-            <main className="flex-1 flex items-center justify-center overflow-auto custom-scrollbar py-4">
-                <div className="flex justify-center items-center px-8 min-w-max">
-                    <div className="grid grid-cols-9 gap-2 sm:gap-4">
+            {/* ■ MAIN: Battlefield Area - 横スクロール対応 */}
+            <main className="flex-1 flex items-center justify-start sm:justify-center overflow-x-auto overflow-y-auto custom-scrollbar py-2 sm:py-4">
+                <div className="flex justify-center items-center px-2 sm:px-8 min-w-max">
+                    <div className="grid grid-cols-9 gap-1 sm:gap-2 lg:gap-4">
                         {G.flags.map((flag, i) => {
                             const topSlotsKey = isInverted ? SLOTS.P0 : SLOTS.P1;
                             const bottomSlotsKey = isInverted ? SLOTS.P1 : SLOTS.P0;
@@ -452,10 +538,14 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                                 (activeGuileTactic?.type === TACTIC_IDS.TRAITOR)
                             );
 
+                            // Determine interactivity for own zones during Redeploy
+                            const isOwnSlotInteractableForRedeploy = isMyTurn && !isSpectating && flag.owner === null &&
+                                activeGuileTactic?.type === TACTIC_IDS.REDEPLOY;
+
                             return (
-                                <div key={flag.id} className="flex flex-col items-center justify-center relative group h-[500px]">
+                                <div key={flag.id} className="flex flex-col items-center justify-center relative group h-[380px] sm:h-[450px] lg:h-[500px]">
                                     {/* Top Area (Opponent) */}
-                                    <div className="flex-1 w-full flex flex-col justify-end pb-4 gap-2">
+                                    <div className="flex-1 w-full flex flex-col justify-end pb-4 gap-2 min-h-0">
                                         {/* Tactic Slot (Opponent) */}
                                         <Zone
                                             id={`flag-${i}-${topTacticSlotsKey}`}
@@ -486,7 +576,7 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                                     </div>
 
                                     {/* Center Flag Line */}
-                                    <div className="my-2 z-10 relative flex justify-center items-center h-16 w-full">
+                                    <div className="my-1 sm:my-2 z-10 relative flex justify-center items-center h-12 sm:h-16 w-full">
                                         <div className="absolute w-full h-[1px] bg-zinc-800 -z-10"></div>
                                         <Flag
                                             flag={flag}
@@ -500,21 +590,27 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                                     </div>
 
                                     {/* Bottom Area (Player) */}
-                                    <div className="flex-1 w-full flex flex-col justify-start pt-4 gap-2">
+                                    <div className="flex-1 w-full flex flex-col justify-start pt-4 gap-2 min-h-0">
                                         {/* Troop Slot (Player) */}
                                         <Zone
                                             id={`flag-${i}-${bottomSlotsKey}`}
                                             cards={bottomCards}
                                             type="slot"
-                                            className="h-full justify-start bg-transparent"
-                                            isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR)}
+                                            className={cn(
+                                                "h-full justify-start bg-transparent",
+                                                isOwnSlotInteractableForRedeploy && !activeCard && "ring-2 ring-amber-500/50 cursor-pointer bg-amber-500/5",
+                                                isOwnSlotInteractableForRedeploy && activeCard && "ring-2 ring-green-500/50 cursor-pointer bg-green-500/5"
+                                            )}
+                                            isInteractable={!isSpectating && flag.owner === null && (!isScoutMode || activeGuileTactic?.type === TACTIC_IDS.TRAITOR || activeGuileTactic?.type === TACTIC_IDS.REDEPLOY)}
                                             activeCardId={activeCard?.card.id}
                                             isTargeted={!isScoutMode && !!activeCard && !isSpectating && flag.owner === null &&
                                                 (
                                                     // Normal placement logic
                                                     (!activeGuileTactic && (activeCard.card.type === CARD_TYPES.TROOP || (activeCard.card.type === CARD_TYPES.TACTIC && !isEnvironmentTactic(activeCard.card.name) && !isGuileTactic(activeCard.card)))) ||
                                                     // Traitor destination logic
-                                                    (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID)
+                                                    (activeGuileTactic?.type === TACTIC_IDS.TRAITOR && activeCard.location.playerId === opponentID) ||
+                                                    // Redeploy destination logic
+                                                    (activeGuileTactic?.type === TACTIC_IDS.REDEPLOY && activeCard.location.playerId === myID)
                                                 )
                                             }
                                             onCardClick={handleCardClick}
@@ -543,120 +639,40 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                 </div>
             </main>
 
-            {/* ■ FOOTER: Player Area */}
-            <footer className="flex-none p-4 pb-6 z-20 bg-gradient-to-t from-black via-zinc-900 to-transparent">
-                <div className="max-w-7xl mx-auto flex items-end justify-between gap-8">
+            {/* ■ FOOTER: Player Area - スマホ横画面対応 */}
+            <footer className="flex-none p-2 sm:p-4 pb-2 sm:pb-6 z-20 bg-gradient-to-t from-black via-zinc-900 to-transparent">
+                {/* スマホ: 上段にデッキ/ボタン、下段に手札 */}
+                {/* PC: 左にデッキ、中央に手札、右にボタン */}
+                <div className="max-w-7xl mx-auto flex flex-col gap-2">
 
-                    {/* Left: Decks & Discard */}
-                    <div className="flex gap-6 items-end">
-                        <div className="flex gap-4">
+                    {/* 上段: デッキ/捨て札 + ボタン/ステータス */}
+                    <div className="flex items-end justify-between gap-2 sm:hidden">
+                        {/* Left: Decks & Discard (compact) */}
+                        <div className="flex gap-2 items-end">
                             <DeckPile
                                 count={G.troopDeck.length}
                                 type={DECK_TYPES.TROOP}
                                 onClick={() => handleDeckClick(DECK_TYPES.TROOP)}
                                 isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TROOP}
                             />
                             <DeckPile
                                 count={G.tacticDeck.length}
                                 type={DECK_TYPES.TACTIC}
                                 onClick={() => handleDeckClick(DECK_TYPES.TACTIC)}
                                 isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TACTIC}
                             />
                         </div>
 
-                        <div className="h-16 w-[1px] bg-zinc-700"></div>
-
-                        <div className="flex gap-2">
-                            <DiscardPile
-                                cards={G.troopDiscard}
-                                onClick={() => handleDiscardClick(DECK_TYPES.TROOP)}
-                                label="Troop"
-                            />
-                            <DiscardPile
-                                cards={G.tacticDiscard}
-                                onClick={() => handleDiscardClick(DECK_TYPES.TACTIC)}
-                                label="Tactic"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Center: Hand & Tactics Field */}
-                    <div className="flex-1 flex flex-col items-center justify-end pb-2 gap-2 relative">
-                        {/* Scout Guide Message */}
-                        {G.scoutDrawCount !== null && (G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT || scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT) && (
-                            <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-50 animate-bounce font-bold border-2 border-amber-400 whitespace-nowrap pointer-events-none flex items-center gap-2">
-                                <Info size={18} />
-                                {G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT ? (
-                                    <span>SCOUT ACTIVE: Draw {GAME_CONFIG.SCOUT_DRAW_LIMIT - G.scoutDrawCount} more card(s)!</span>
-                                ) : (
-                                    <span>SCOUT ACTIVE: Return {GAME_CONFIG.SCOUT_RETURN_LIMIT - scoutReturnCount} card(s) to deck!</span>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Guile Tactic Active Message */}
-                        {activeGuileTactic && (
-                            <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-red-700 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] z-50 font-bold border-2 border-red-500 whitespace-nowrap flex items-center gap-4">
-                                <Info size={18} />
-                                {activeGuileTactic.type === TACTIC_IDS.DESERTER ? (
-                                    <span>DESERTER: Select an opponent's card to discard!</span>
-                                ) : (
-                                    <span>TRAITOR: Select opponent's troop &rarr; Place in your slot!</span>
-                                )}
-                                <button
-                                    onClick={() => {
-                                        moves.cancelGuileTactic();
-                                        setActiveCard(null);
-                                    }}
-                                    className="bg-white/20 hover:bg-white/40 p-1 rounded-full transition-colors"
-                                >
-                                    <XCircle size={20} />
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Tactics Field */}
-                        <div className="flex items-center gap-2 transition-all duration-300">
-                            <div className="text-[10px] text-zinc-600 font-bold tracking-widest uppercase" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Active Tactics</div>
-                            <Zone
-                                id={`field-${myID}`}
-                                cards={G.tacticsField[myID]}
-                                type="slot"
-                                className={cn(
-                                    "h-24 min-h-[90px] w-full min-w-[120px] max-w-xs border rounded-xl px-4 shadow-inner transition-colors",
-                                    (activeCard?.location.area === AREAS.HAND && isGuileTactic(activeCard.card)) || !!activeGuileTactic
-                                        ? "border-amber-500/50 bg-amber-500/10"
-                                        : "border-zinc-700/50 bg-black/40"
-                                )}
-                                orientation="horizontal"
-                                isInteractable={!isSpectating && activeCard?.location.area === AREAS.HAND && isGuileTactic(activeCard.card)}
-                                isTargeted={!!activeCard && activeCard.location.area === AREAS.HAND && isGuileTactic(activeCard.card)}
-                                onZoneClick={() => handleTacticsFieldClick(myID)}
-                                onInfoClick={handleInfoClick}
-                            />
-                        </div>
-
-                        <Hand
-                            cards={G.players[myID].hand}
-                            playerId={myID}
-                            isCurrentPlayer={!isSpectating}
-                            activeCardId={activeCard?.card.id}
-                            onCardClick={handleCardClick}
-                            onInfoClick={handleInfoClick}
-                            onHandClick={handleHandClick}
-                            onSort={() => moves.sortHand()}
-                            className={cn(activeGuileTactic ? "opacity-50 pointer-events-none" : "")}
-                        />
-                    </div>
-
-                    {/* Right: Actions & Status */}
-                    <div className="flex flex-col gap-4 items-end">
+                        {/* Right: End Turn Button (compact) */}
                         <button
                             className={cn(
-                                "px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all transform active:scale-95",
+                                "px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-1 text-sm transition-all transform active:scale-95",
                                 canEndTurn
                                     ? "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20"
-                                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
+                                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700",
+                                canEndTurn && G.hasPlayedCard && "ring-4 ring-amber-400 animate-pulse"
                             )}
                             onClick={() => {
                                 if (!canEndTurn) return;
@@ -668,17 +684,144 @@ export const BattleLineBoard = ({ G, ctx, moves, playerID, playerName, matchID }
                             }}
                             disabled={!canEndTurn}
                         >
-                            <CheckCircle2 size={20} />
-                            END TURN
+                            <CheckCircle2 size={16} />
+                            END
                         </button>
+                    </div>
 
-                        <div className="bg-zinc-800/90 p-3 rounded-lg border border-zinc-700 flex items-center gap-3 w-48 shadow-lg">
-                            <div className={cn("w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center", myID === PLAYER_IDS.P0 ? 'bg-red-600' : 'bg-blue-600')}>
-                                <Shield size={20} className="text-white" />
+                    {/* 下段: 手札 (スマホ) / PCでは3列レイアウト */}
+                    <div className="flex items-end justify-between gap-4 sm:gap-8">
+
+                        {/* PCのみ: Left - Decks & Discard */}
+                        <div className="hidden sm:flex gap-6 items-end">
+                            <div className="flex gap-4">
+                                <DeckPile
+                                    count={G.troopDeck.length}
+                                    type={DECK_TYPES.TROOP}
+                                    onClick={() => handleDeckClick(DECK_TYPES.TROOP)}
+                                    isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                    isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TROOP}
+                                />
+                                <DeckPile
+                                    count={G.tacticDeck.length}
+                                    type={DECK_TYPES.TACTIC}
+                                    onClick={() => handleDeckClick(DECK_TYPES.TACTIC)}
+                                    isDisabled={!isMyTurn || (!isScoutMode && !!activeGuileTactic)}
+                                    isHighlighted={isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard?.card.type === CARD_TYPES.TACTIC}
+                                />
                             </div>
-                            <div>
-                                <div className="text-[10px] text-zinc-400 font-bold tracking-widest">YOU</div>
-                                <div className="font-bold">{myName}</div>
+
+                            <div className="h-16 w-[1px] bg-zinc-700"></div>
+
+                            <div className="flex gap-2">
+                                <DiscardPile
+                                    cards={G.troopDiscard}
+                                    onClick={() => handleDiscardClick(DECK_TYPES.TROOP)}
+                                    label="Troop"
+                                />
+                                <DiscardPile
+                                    cards={G.tacticDiscard}
+                                    onClick={() => handleDiscardClick(DECK_TYPES.TACTIC)}
+                                    label="Tactic"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Center: Hand & Tactics Field */}
+                        <div className="flex-1 flex flex-col items-center justify-end pb-1 sm:pb-2 gap-1 sm:gap-2 relative">
+                            {/* Scout Guide Message */}
+                            {G.scoutDrawCount !== null && (G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT || scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT) && (
+                                <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-amber-600 text-white px-6 py-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-50 animate-bounce font-bold border-2 border-amber-400 whitespace-nowrap pointer-events-none flex items-center gap-2">
+                                    <Info size={18} />
+                                    {G.scoutDrawCount < GAME_CONFIG.SCOUT_DRAW_LIMIT ? (
+                                        <span>SCOUT ACTIVE: Draw {GAME_CONFIG.SCOUT_DRAW_LIMIT - G.scoutDrawCount} more card(s)!</span>
+                                    ) : (
+                                        <span>SCOUT ACTIVE: Return {GAME_CONFIG.SCOUT_RETURN_LIMIT - scoutReturnCount} card(s) to deck!</span>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Guile Tactic Active Message */}
+                            {activeGuileTactic && (
+                                <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-red-700 text-white px-6 py-3 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] z-50 font-bold border-2 border-red-500 whitespace-nowrap flex items-center gap-4">
+                                    <Info size={18} />
+                                    {activeGuileTactic.type === TACTIC_IDS.DESERTER && (
+                                        <span>DESERTER: Select an opponent's card to discard!</span>
+                                    )}
+                                    {activeGuileTactic.type === TACTIC_IDS.TRAITOR && (
+                                        <span>TRAITOR: Select opponent's troop &rarr; Place in your slot!</span>
+                                    )}
+                                    {activeGuileTactic.type === TACTIC_IDS.REDEPLOY && (
+                                        <span>REDEPLOY: Select your card to move or discard!</span>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tactics Field */}
+                            <div className="flex items-center gap-2 transition-all duration-300">
+                                <div className="text-[10px] text-zinc-600 font-bold tracking-widest uppercase" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Active Tactics</div>
+                                <Zone
+                                    id={`field-${myID}`}
+                                    cards={G.tacticsField[myID]}
+                                    type="slot"
+                                    className={cn(
+                                        "h-24 min-h-[90px] w-full min-w-[120px] max-w-xs border rounded-xl px-4 shadow-inner transition-colors",
+                                        (activeCard?.location.area === AREAS.HAND && isGuileTactic(activeCard.card)) || !!activeGuileTactic
+                                            ? "border-amber-500/50 bg-amber-500/10"
+                                            : "border-zinc-700/50 bg-black/40"
+                                    )}
+                                    orientation="horizontal"
+                                    isInteractable={!isSpectating && activeCard?.location.area === AREAS.HAND && isGuileTactic(activeCard.card)}
+                                    isTargeted={!!activeCard && activeCard.location.area === AREAS.HAND && isGuileTactic(activeCard.card)}
+                                    onZoneClick={() => handleTacticsFieldClick(myID)}
+                                    onInfoClick={handleInfoClick}
+                                />
+                            </div>
+
+                            <Hand
+                                cards={G.players[myID].hand}
+                                playerId={myID}
+                                isCurrentPlayer={!isSpectating}
+                                activeCardId={activeCard?.card.id}
+                                onCardClick={handleCardClick}
+                                onInfoClick={handleInfoClick}
+                                onSort={() => moves.sortHand()}
+                                className={cn((activeGuileTactic || (G.hasPlayedCard && !isScoutMode)) ? "opacity-50 pointer-events-none" : "")}
+                            />
+                        </div>
+
+                        {/* PCのみ: Right - Actions & Status */}
+                        <div className="hidden sm:flex flex-col gap-4 items-end">
+                            <button
+                                className={cn(
+                                    "px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all transform active:scale-95",
+                                    canEndTurn
+                                        ? "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20"
+                                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700",
+                                    canEndTurn && G.hasPlayedCard && "ring-4 ring-amber-400 animate-pulse"
+                                )}
+                                onClick={() => {
+                                    if (!canEndTurn) return;
+                                    if (isScoutMode) {
+                                        setIsEndTurnConfirmOpen(true);
+                                    } else {
+                                        setIsDrawModalOpen(true);
+                                    }
+                                }}
+                                disabled={!canEndTurn}
+                            >
+                                <CheckCircle2 size={20} />
+                                END TURN
+                            </button>
+
+                            <div className="bg-zinc-800/90 p-3 rounded-lg border border-zinc-700 flex items-center gap-3 w-48 shadow-lg">
+                                <div className={cn("w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center", myID === PLAYER_IDS.P0 ? 'bg-red-600' : 'bg-blue-600')}>
+                                    <Shield size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-zinc-400 font-bold tracking-widest">YOU</div>
+                                    <div className="font-bold">{myName}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
