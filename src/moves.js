@@ -501,6 +501,24 @@ export const claimFlag = ({ G, ctx }, flagIndex) => {
   flag.owner = ctx.currentPlayer;
 };
 
+export const resetFlag = ({ G, playerID }, flagIndex) => {
+  // 1. プライベートルームのみ許可
+  if (!G.isPrivateRoom) return INVALID_MOVE;
+
+  // 2. フラッグ存在確認
+  const flag = G.flags[flagIndex];
+  if (!flag) return INVALID_MOVE;
+
+  // 3. 奪取済みか確認
+  if (flag.owner === null) return INVALID_MOVE;
+
+  // 4. 自分が奪取したフラッグのみリセット可能
+  if (flag.owner !== playerID) return INVALID_MOVE;
+
+  // 5. リセット実行
+  flag.owner = null;
+};
+
 export const shuffleDeck = ({ G, random }, deckType) => {
   const deck = deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
 
