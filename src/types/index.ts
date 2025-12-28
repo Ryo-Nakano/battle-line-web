@@ -57,6 +57,7 @@ export interface GameState {
   playerNames: { [playerID: string]: string | null };
   hasPlayedCard: boolean;
   cardsPlayedThisTurn: string[];
+  isPrivateRoom: boolean;
 }
 
 export type LocationInfo = {

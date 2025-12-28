@@ -201,6 +201,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
     const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
     const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
     const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
+    const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
     const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
     const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
 
@@ -583,6 +584,11 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                             myID={myID}
                                             onClaim={(id) => {
                                                 const index = parseInt(id.split('-')[1], 10);
+                                                // プライベートルームで自分が奪取したフラッグの場合、リセットモーダル表示
+                                                if (G.isPrivateRoom && flag.owner === myID) {
+                                                    setPendingResetFlagIndex(index);
+                                                    return;
+                                                }
                                                 if (flag.owner !== null) return;
                                                 if (isMyTurn && !isSpectating && !activeGuileTactic) setPendingFlagIndex(index);
                                             }}
@@ -850,6 +856,19 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                 }}
                 title="フラッグ確保の確認"
                 message="このフラッグを確保しますか？確保後は取り消すことができません。"
+            />
+            <ConfirmModal
+                isOpen={pendingResetFlagIndex !== null}
+                onClose={() => setPendingResetFlagIndex(null)}
+                onConfirm={() => {
+                    if (pendingResetFlagIndex !== null) {
+                        moves.resetFlag(pendingResetFlagIndex);
+                        setPendingResetFlagIndex(null);
+                    }
+                }}
+                title="フラッグリセットの確認"
+                message="このフラッグを未奪取状態に戻しますか？"
+                confirmText="リセットする"
             />
             <ConfirmModal
                 isOpen={isEndTurnConfirmOpen}
