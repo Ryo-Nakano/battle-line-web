@@ -15,6 +15,7 @@ import {
   drawAndEndTurn,
   moveCard,
   claimFlag,
+  resetFlag,
   shuffleDeck,
   endTurn,
   sortHand,
@@ -104,6 +105,7 @@ export const BattleLine = {
       playerNames: { [PLAYER_IDS.P0]: null, [PLAYER_IDS.P1]: null },
       hasPlayedCard: false,
       cardsPlayedThisTurn: [],
+      isPrivateRoom: setupData?.isPrivate || false,
     };
   },
 
@@ -132,6 +134,10 @@ export const BattleLine = {
         drawAndEndTurn,
         moveCard,
         claimFlag,
+        resetFlag: {
+          move: resetFlag,
+          ignoreTurn: true
+        },
         shuffleDeck,
         endTurn,
         sortHand,
