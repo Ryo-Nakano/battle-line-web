@@ -879,6 +879,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                 }}
                 title="ターン終了"
                 message="偵察を終了してターンを交代しますか？"
+                confirmText="終了する"
             />
             <DrawSelectionModal
                 isOpen={isDrawModalOpen}
