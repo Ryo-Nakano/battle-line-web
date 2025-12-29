@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getServerUrl } from './utils';
+import { saveSession } from './utils/sessionStorage';
 import { Sword, Users, Lock, Plus, RefreshCw, Search, X } from 'lucide-react';
 
 interface LobbyProps {
@@ -288,6 +289,12 @@ const CreateRoomModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any
       }
 
       const joinData = await joinRes.json();
+      saveSession({
+        matchID,
+        playerID: '0',
+        playerName,
+        credentials: joinData.playerCredentials,
+      });
       onJoin(matchID, '0', playerName, joinData.playerCredentials);
 
     } catch (err: any) {
@@ -422,6 +429,12 @@ const JoinByIdModal = ({ onClose, onJoin }: { onClose: () => void, onJoin: any }
       }
 
       const joinData = await joinRes.json();
+      saveSession({
+        matchID,
+        playerID,
+        playerName,
+        credentials: joinData.playerCredentials,
+      });
       onJoin(matchID, playerID, playerName, joinData.playerCredentials);
 
     } catch (err: any) {
@@ -521,6 +534,12 @@ const JoinRoomModal = ({ room, onClose, onJoin }: { room: Room, onClose: () => v
       }
 
       const joinData = await joinRes.json();
+      saveSession({
+        matchID: room.matchID,
+        playerID,
+        playerName,
+        credentials: joinData.playerCredentials,
+      });
       onJoin(room.matchID, playerID, playerName, joinData.playerCredentials);
 
     } catch (err: any) {

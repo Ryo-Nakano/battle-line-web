@@ -9,7 +9,7 @@ import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { CheckCircle2, Info, Zap } from 'lucide-react';
+import { CheckCircle2, Info, Zap, Menu, LogOut } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic } from '../constants/tactics';
 import {
@@ -24,6 +24,7 @@ import {
 
 interface MobileBoardProps extends BoardProps<GameState> {
   playerName?: string;
+  onLeaveRoom?: () => void;
 }
 
 type ActiveCardState = {
@@ -31,7 +32,7 @@ type ActiveCardState = {
   location: LocationInfo;
 } | null;
 
-export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoardProps) => {
+export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }: MobileBoardProps) => {
   const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
   const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
@@ -39,6 +40,8 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
   const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
   const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // Sync player name
   useEffect(() => {
@@ -261,7 +264,55 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
   const opponentTacticCount = opponentHand.filter(c => c.type === 'tactic').length;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none">
+    <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none relative">
+      {/* Menu Button */}
+      <div className="absolute top-2 right-2 z-30">
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-2 rounded-lg bg-zinc-800/80 border border-zinc-700 text-zinc-400 hover:text-white transition-colors"
+        >
+          <Menu size={18} />
+        </button>
+        {isMenuOpen && (
+          <div className="absolute top-full right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[140px]">
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                setIsExitConfirmOpen(true);
+              }}
+              className="w-full px-3 py-2 text-left text-red-400 hover:bg-zinc-700 flex items-center gap-2 text-xs"
+            >
+              <LogOut size={14} />
+              ゲームから出る
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Exit Confirmation Modal */}
+      {isExitConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-xs p-5">
+            <h3 className="text-base font-bold text-white mb-3">ゲームから出ますか？</h3>
+            <p className="text-zinc-400 text-sm mb-4">ロビー画面に戻ります。</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsExitConfirmOpen(false)}
+                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 rounded-lg transition-colors text-sm"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => onLeaveRoom?.()}
+                className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg transition-colors text-sm"
+              >
+                出る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー: ゲーム情報バー */}
       <MobileGameInfo
         opponentName={opponentName}
