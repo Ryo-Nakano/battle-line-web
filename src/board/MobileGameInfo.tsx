@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { cn } from '../utils';
-import { Layers, Trash2 } from 'lucide-react';
+import { Layers, Trash2, Menu, LogOut } from 'lucide-react';
 
 interface MobileGameInfoProps {
   opponentName: string;
@@ -12,6 +13,7 @@ interface MobileGameInfoProps {
   isMyTurn: boolean;
   onDeckClick?: (type: 'troop' | 'tactic') => void;
   onDiscardClick?: (type: 'troop' | 'tactic') => void;
+  onLeaveClick?: () => void;
   isDeckClickable?: boolean;
   highlightedDeckType?: 'troop' | 'tactic' | null;
 }
@@ -27,9 +29,12 @@ export function MobileGameInfo({
   isMyTurn,
   onDeckClick,
   onDiscardClick,
+  onLeaveClick,
   isDeckClickable = false,
   highlightedDeckType = null
 }: MobileGameInfoProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <div className="flex items-center justify-between px-2 py-1.5 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800 text-xs">
       {/* 相手情報 */}
@@ -114,6 +119,30 @@ export function MobileGameInfo({
           : "bg-zinc-800 text-zinc-500 border border-zinc-700"
       )}>
         {isMyTurn ? 'YOUR TURN' : 'WAIT'}
+      </div>
+
+      {/* メニューボタン */}
+      <div className="relative">
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700 text-zinc-400 hover:text-white transition-colors"
+        >
+          <Menu size={16} />
+        </button>
+        {isMenuOpen && (
+          <div className="absolute top-full right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[140px] z-50">
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                onLeaveClick?.();
+              }}
+              className="w-full px-3 py-2.5 text-left text-red-400 hover:bg-zinc-700 flex items-center gap-2 text-xs"
+            >
+              <LogOut size={14} />
+              ゲームから出る
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { CheckCircle2, Info, Zap, Menu, LogOut } from 'lucide-react';
+import { CheckCircle2, Info, Zap } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic } from '../constants/tactics';
 import {
@@ -40,7 +40,6 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
   const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
   const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // Sync player name
@@ -264,31 +263,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
   const opponentTacticCount = opponentHand.filter(c => c.type === 'tactic').length;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none relative">
-      {/* Menu Button */}
-      <div className="absolute top-2 right-2 z-30">
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="p-2 rounded-lg bg-zinc-800/80 border border-zinc-700 text-zinc-400 hover:text-white transition-colors"
-        >
-          <Menu size={18} />
-        </button>
-        {isMenuOpen && (
-          <div className="absolute top-full right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[140px]">
-            <button
-              onClick={() => {
-                setIsMenuOpen(false);
-                setIsExitConfirmOpen(true);
-              }}
-              className="w-full px-3 py-2 text-left text-red-400 hover:bg-zinc-700 flex items-center gap-2 text-xs"
-            >
-              <LogOut size={14} />
-              ゲームから出る
-            </button>
-          </div>
-        )}
-      </div>
-
+    <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none">
       {/* Exit Confirmation Modal */}
       {isExitConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -325,6 +300,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
         isMyTurn={isMyTurn}
         onDeckClick={isScoutMode ? handleDeckClick : undefined}
         onDiscardClick={handleDiscardClick}
+        onLeaveClick={() => setIsExitConfirmOpen(true)}
         isDeckClickable={isScoutMode}
         highlightedDeckType={
           isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard
