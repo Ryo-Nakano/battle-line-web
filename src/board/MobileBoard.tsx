@@ -24,6 +24,7 @@ import {
 
 interface MobileBoardProps extends BoardProps<GameState> {
   playerName?: string;
+  onLeaveRoom?: () => void;
 }
 
 type ActiveCardState = {
@@ -31,7 +32,7 @@ type ActiveCardState = {
   location: LocationInfo;
 } | null;
 
-export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoardProps) => {
+export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }: MobileBoardProps) => {
   const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
   const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
   const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
@@ -39,6 +40,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
   const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
   const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // Sync player name
   useEffect(() => {
@@ -262,6 +264,30 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans select-none">
+      {/* Exit Confirmation Modal */}
+      {isExitConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-xs p-5">
+            <h3 className="text-base font-bold text-white mb-3">ゲームから出ますか？</h3>
+            <p className="text-zinc-400 text-sm mb-4">ロビー画面に戻ります。</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsExitConfirmOpen(false)}
+                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 rounded-lg transition-colors text-sm"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => onLeaveRoom?.()}
+                className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg transition-colors text-sm"
+              >
+                出る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー: ゲーム情報バー */}
       <MobileGameInfo
         opponentName={opponentName}
@@ -274,6 +300,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName }: MobileBoard
         isMyTurn={isMyTurn}
         onDeckClick={isScoutMode ? handleDeckClick : undefined}
         onDiscardClick={handleDiscardClick}
+        onLeaveClick={() => setIsExitConfirmOpen(true)}
         isDeckClickable={isScoutMode}
         highlightedDeckType={
           isScoutMode && G.scoutDrawCount === GAME_CONFIG.SCOUT_DRAW_LIMIT && scoutReturnCount < GAME_CONFIG.SCOUT_RETURN_LIMIT && activeCard

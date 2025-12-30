@@ -11,7 +11,7 @@ import { CardHelpModal } from './CardHelpModal';
 import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
-import { Sword, Shield, Info, CheckCircle2, Menu, Copy } from 'lucide-react';
+import { Sword, Shield, Info, CheckCircle2, Menu, Copy, LogOut } from 'lucide-react';
 import { cn } from '../utils';
 import { MobileBoard } from './MobileBoard';
 import { isEnvironmentTactic } from '../constants/tactics';
@@ -28,6 +28,7 @@ import {
 
 interface BattleLineBoardProps extends BoardProps<GameState> {
     playerName?: string;
+    onLeaveRoom?: () => void;
 }
 
 interface MiniGameProps {
@@ -37,6 +38,7 @@ interface MiniGameProps {
     playerID: string | null;
     playerNames: { [key: string]: string | null };
     matchID: string;
+    onLeaveRoom?: () => void;
 }
 
 type ActiveCardState = {
@@ -44,7 +46,10 @@ type ActiveCardState = {
     location: LocationInfo;
 } | null;
 
-const MiniGame = ({ G, moves, playerID, playerNames, matchID }: MiniGameProps) => {
+const MiniGame = ({ G, moves, playerID, playerNames, matchID, onLeaveRoom }: MiniGameProps) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+
     const myID = playerID || '0';
     const myPick = G.minigame.picked[myID];
     const winner = G.minigame.winner;
@@ -60,7 +65,57 @@ const MiniGame = ({ G, moves, playerID, playerNames, matchID }: MiniGameProps) =
     );
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black p-4 overflow-auto">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-100 font-sans select-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 to-black p-4 overflow-auto relative">
+            {/* Menu Button */}
+            <div className="absolute top-4 right-4 z-20">
+                <div className="relative">
+                    <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="p-2 rounded-lg bg-zinc-800/80 border border-zinc-700 text-zinc-400 hover:text-white transition-colors"
+                    >
+                        <Menu size={20} />
+                    </button>
+                    {isMenuOpen && (
+                        <div className="absolute top-full right-0 mt-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                            <button
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    setIsExitConfirmOpen(true);
+                                }}
+                                className="w-full px-4 py-3 text-left text-red-400 hover:bg-zinc-700 flex items-center gap-2 text-sm"
+                            >
+                                <LogOut size={16} />
+                                ゲームから出る
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Exit Confirmation Modal */}
+            {isExitConfirmOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">ゲームから出ますか？</h3>
+                        <p className="text-zinc-400 text-sm mb-6">ロビー画面に戻ります。</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsExitConfirmOpen(false)}
+                                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 rounded-lg transition-colors"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={() => onLeaveRoom?.()}
+                                className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg transition-colors"
+                            >
+                                出る
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <h1 className="text-xl sm:text-3xl font-bold mb-4 text-amber-500 tracking-widest uppercase">Determine Start Player</h1>
 
             <div className="flex justify-between w-full max-w-2xl mb-8 px-8">
@@ -196,7 +251,7 @@ const MiniGame = ({ G, moves, playerID, playerNames, matchID }: MiniGameProps) =
 };
 
 export const BattleLineBoard = (props: BattleLineBoardProps) => {
-    const { G, ctx, moves, playerID, playerName, matchID } = props;
+    const { G, ctx, moves, playerID, playerName, matchID, onLeaveRoom } = props;
     const [activeCard, setActiveCard] = useState<ActiveCardState>(null);
     const [discardModalType, setDiscardModalType] = useState<typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC | null>(null);
     const [infoModalCard, setInfoModalCard] = useState<CardType | null>(null);
@@ -204,6 +259,8 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
     const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
     const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
     const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
     // モバイル判定用のstate（1024px未満でモバイルUI）
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
@@ -223,7 +280,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
     }, [playerID, playerName, G.playerNames, moves]);
 
     if (ctx.phase === PHASES.DETERMINATION) {
-        return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} playerNames={G.playerNames} matchID={matchID} />;
+        return <MiniGame G={G} ctx={ctx} moves={moves} playerID={playerID} playerNames={G.playerNames} matchID={matchID} onLeaveRoom={onLeaveRoom} />;
     }
 
     // スマホ版UIへの切り替え
@@ -506,15 +563,32 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
+                <div className="flex items-center gap-4 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md relative">
                     <div className={cn("flex items-center gap-2 text-sm font-medium transition-colors", isMyTurn ? "text-amber-500" : "text-zinc-500")}>
                         <Info size={16} />
                         <span>{isMyTurn ? "YOUR TURN" : "WAITING..."}</span>
                     </div>
                     <div className="h-4 w-[1px] bg-zinc-700"></div>
-                    <button className="text-zinc-400 hover:text-white transition-colors">
+                    <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="text-zinc-400 hover:text-white transition-colors"
+                    >
                         <Menu size={20} />
                     </button>
+                    {isMenuOpen && (
+                        <div className="absolute top-full right-0 mt-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl overflow-hidden min-w-[160px] z-30">
+                            <button
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    setIsExitConfirmOpen(true);
+                                }}
+                                className="w-full px-4 py-3 text-left text-red-400 hover:bg-zinc-700 flex items-center gap-2 text-sm"
+                            >
+                                <LogOut size={16} />
+                                ゲームから出る
+                            </button>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -891,6 +965,30 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                 troopCount={G.troopDeck.length}
                 tacticCount={G.tacticDeck.length}
             />
+
+            {/* Exit Confirmation Modal */}
+            {isExitConfirmOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-sm p-6 mx-4">
+                        <h3 className="text-lg font-bold text-white mb-4">ゲームから出ますか？</h3>
+                        <p className="text-zinc-400 text-sm mb-6">ロビー画面に戻ります。</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsExitConfirmOpen(false)}
+                                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 rounded-lg transition-colors"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={() => onLeaveRoom?.()}
+                                className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg transition-colors"
+                            >
+                                出る
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Background Grid Decoration */}
             <div className="fixed inset-0 pointer-events-none opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
