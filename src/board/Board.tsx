@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { BoardProps } from 'boardgame.io/react';
 import type { GameState, Card as CardType, LocationInfo } from '../types';
 import { Hand } from './Hand';
@@ -273,6 +273,59 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // 配置カードハイライト用
+    const [highlightedCard, setHighlightedCard] = useState<{
+        flagIndex: number;
+        slotIndex: number;
+        playerID: string;
+        timestamp: number;
+    } | null>(null);
+    const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastProcessedTimestampRef = useRef<number | undefined>(undefined);
+
+    // lastPlacedCardが変更されたのを検知して3秒タイマーを設定
+    useEffect(() => {
+        const newCard = G.lastPlacedCard;
+        // 新しいカードが配置された場合のみハイライト（3秒以内の配置のみ）
+        if (newCard && newCard.timestamp !== lastProcessedTimestampRef.current) {
+            const elapsed = Date.now() - newCard.timestamp;
+            // 3秒以上経過している場合はハイライトしない（ターンエンド時の再表示防止）
+            if (elapsed > 5000) {
+                lastProcessedTimestampRef.current = newCard.timestamp;
+                return;
+            }
+            lastProcessedTimestampRef.current = newCard.timestamp;
+            // 既存のタイマーをクリア
+            if (highlightTimeoutRef.current) {
+                clearTimeout(highlightTimeoutRef.current);
+            }
+            // ハイライト開始
+            setHighlightedCard({
+                flagIndex: newCard.flagIndex,
+                slotIndex: newCard.slotIndex,
+                playerID: newCard.playerID,
+                timestamp: newCard.timestamp,
+            });
+            // 残り時間後にハイライト解除
+            const remainingTime = Math.max(0, 5000 - elapsed);
+            highlightTimeoutRef.current = setTimeout(() => {
+                setHighlightedCard(null);
+            }, remainingTime);
+        }
+        return () => {
+            if (highlightTimeoutRef.current) {
+                clearTimeout(highlightTimeoutRef.current);
+                highlightTimeoutRef.current = null;
+            }
+            // クリーンアップ時にハイライトもクリア
+            setHighlightedCard(null);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [G.lastPlacedCard]);
+
+    // ハイライト情報
+    const highlightInfo = highlightedCard;
+
     // Sync player name
     useEffect(() => {
         if (playerID && playerName && G.playerNames[playerID] !== playerName) {
@@ -307,6 +360,17 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
         const key = card.name;
         const guileNames: string[] = [TACTIC_IDS.SCOUT, TACTIC_IDS.REDEPLOY, TACTIC_IDS.DESERTER, TACTIC_IDS.TRAITOR];
         return guileNames.includes(key);
+    };
+
+    // Helper to get highlight index for a specific slot
+    const getHighlightIndex = (flagIndex: number, slotType: string): number | undefined => {
+        if (!highlightInfo || highlightInfo.flagIndex !== flagIndex) return undefined;
+        // slotType から playerID を抽出
+        const slotPlayerID = slotType.startsWith('p0') ? PLAYER_IDS.P0 : PLAYER_IDS.P1;
+        if (highlightInfo.playerID !== slotPlayerID) return undefined;
+        // tactic slot の場合はハイライト対象外（部隊スロットのみ）
+        if (slotType.includes('tactic')) return undefined;
+        return highlightInfo.slotIndex;
     };
 
     const handleCardClick = (card: CardType, location?: LocationInfo) => {
@@ -646,6 +710,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                                 activeCard?.location.playerId === opponentID && activeCard.location.flagIndex === i && activeCard.location.slotType === topSlotsKey && "ring-amber-500 ring-4"
                                             )}
                                             isInteractable={isOpponentSlotInteractable}
+                                            highlightedCardIndex={getHighlightIndex(i, topSlotsKey)}
                                             onCardClick={handleCardClick}
                                             onInfoClick={handleInfoClick}
                                         />
@@ -697,6 +762,7 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
                                             onCardClick={handleCardClick}
                                             onInfoClick={handleInfoClick}
                                             onZoneClick={handleZoneClick}
+                                            highlightedCardIndex={getHighlightIndex(i, bottomSlotsKey)}
                                         />
                                         {/* Tactic Slot (Player) */}
                                         <Zone

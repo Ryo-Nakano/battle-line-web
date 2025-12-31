@@ -487,6 +487,16 @@ export const moveCard = ({ G, ctx }, { cardId, from, to }) => {
     G.hasPlayedCard = true;
     G.cardsPlayedThisTurn.push(cardId);
   }
+
+  // --- ボードへの配置時、ハイライト用の情報を記録 ---
+  if (to.area === AREAS.BOARD) {
+    G.lastPlacedCard = {
+      flagIndex: to.flagIndex,
+      slotIndex: targetList.length - 1,
+      playerID,
+      timestamp: Date.now(),
+    };
+  }
 };
 
 export const claimFlag = ({ G, ctx }, flagIndex) => {

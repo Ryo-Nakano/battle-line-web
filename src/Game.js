@@ -106,6 +106,7 @@ export const BattleLine = {
       hasPlayedCard: false,
       cardsPlayedThisTurn: [],
       isPrivateRoom: setupData?.isPrivate || false,
+      lastPlacedCard: null,
     };
   },
 

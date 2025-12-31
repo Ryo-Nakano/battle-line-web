@@ -58,6 +58,12 @@ export interface GameState {
   hasPlayedCard: boolean;
   cardsPlayedThisTurn: string[];
   isPrivateRoom: boolean;
+  lastPlacedCard: {
+    flagIndex: number;
+    slotIndex: number;
+    playerID: string;
+    timestamp: number;
+  } | null;
 }
 
 export type LocationInfo = {

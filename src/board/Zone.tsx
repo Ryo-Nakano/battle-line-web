@@ -16,6 +16,7 @@ interface ZoneProps {
   activeCardId?: string;
   isTargeted?: boolean; // 配置候補としてハイライトするか
   showPlaceHere?: boolean; // Place Here テキストを表示するか（デフォルト: true）
+  highlightedCardIndex?: number; // 配置直後のカードをハイライトするインデックス
   onCardClick?: (card: CardType, location?: LocationInfo) => void;
   onInfoClick?: (card: CardType) => void;
   onZoneClick?: (location: LocationInfo) => void;
@@ -32,6 +33,7 @@ export function Zone({
   activeCardId,
   isTargeted = false,
   showPlaceHere = true,
+  highlightedCardIndex,
   onCardClick,
   onInfoClick,
   onZoneClick
@@ -81,6 +83,7 @@ export function Zone({
             location={location}
             isInteractable={isInteractable}
             isSelected={activeCardId === card.id}
+            isHighlighted={highlightedCardIndex === index}
             onClick={onCardClick}
             onInfoClick={onInfoClick}
           />
