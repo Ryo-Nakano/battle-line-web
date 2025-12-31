@@ -12,6 +12,7 @@ import { DeckPile } from './DeckPile';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
 import { Sword, Shield, Info, CheckCircle2, Menu, Copy, LogOut } from 'lucide-react';
+import { TurnStatusIndicator } from './TurnStatusIndicator';
 import { cn } from '../utils';
 import { MobileBoard } from './MobileBoard';
 import { isEnvironmentTactic } from '../constants/tactics';
@@ -565,8 +566,8 @@ export const BattleLineBoard = (props: BattleLineBoardProps) => {
 
                 <div className="flex items-center gap-4 bg-black/40 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md relative">
                     <div className={cn("flex items-center gap-2 text-sm font-medium transition-colors", isMyTurn ? "text-amber-500" : "text-zinc-500")}>
-                        <Info size={16} />
-                        <span>{isMyTurn ? "YOUR TURN" : "WAITING..."}</span>
+                        <TurnStatusIndicator isMyTurn={isMyTurn} size="md" />
+                        <span>{isMyTurn ? "YOUR TURN" : "WAITING"}</span>
                     </div>
                     <div className="h-4 w-[1px] bg-zinc-700"></div>
                     <button

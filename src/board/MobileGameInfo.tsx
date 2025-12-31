@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '../utils';
 import { Layers, Trash2, Menu, LogOut } from 'lucide-react';
+import { TurnStatusIndicator } from './TurnStatusIndicator';
 
 interface MobileGameInfoProps {
   opponentName: string;
@@ -113,12 +114,13 @@ export function MobileGameInfo({
 
       {/* ターン状態 */}
       <div className={cn(
-        "px-2 py-0.5 rounded-full text-[10px] font-bold",
+        "px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1",
         isMyTurn
           ? "bg-amber-600/20 text-amber-400 border border-amber-600/30"
           : "bg-zinc-800 text-zinc-500 border border-zinc-700"
       )}>
-        {isMyTurn ? 'YOUR TURN' : 'WAIT'}
+        <TurnStatusIndicator isMyTurn={isMyTurn} size="sm" />
+        {isMyTurn ? 'YOUR TURN' : 'WAITING'}
       </div>
 
       {/* メニューボタン */}
