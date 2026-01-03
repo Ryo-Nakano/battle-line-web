@@ -40,6 +40,7 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
   const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
   const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
+  const [isSkipDrawConfirmOpen, setIsSkipDrawConfirmOpen] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // Sync player name
@@ -547,8 +548,10 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
               if (!canEndTurn) return;
               if (isScoutMode) {
                 setIsEndTurnConfirmOpen(true);
-              } else {
+              } else if (G.hasPlayedCard) {
                 setIsDrawModalOpen(true);
+              } else {
+                setIsSkipDrawConfirmOpen(true);
               }
             }}
             disabled={!canEndTurn}
@@ -604,6 +607,17 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
         }}
         title="ターン終了"
         message="偵察を終了してターンを交代しますか？"
+        confirmText="終了する"
+      />
+      <ConfirmModal
+        isOpen={isSkipDrawConfirmOpen}
+        onClose={() => setIsSkipDrawConfirmOpen(false)}
+        onConfirm={() => {
+          moves.endTurn();
+          setIsSkipDrawConfirmOpen(false);
+        }}
+        title="ターン終了"
+        message="カードをプレイしていません。本当にカードを引かずにターン終了しますか？"
         confirmText="終了する"
       />
       <DrawSelectionModal
