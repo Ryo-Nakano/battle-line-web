@@ -117,48 +117,50 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoin }) => {
                   </td>
                 </tr>
               ) : (
-                rooms.map((room) => {
-                  const players = room.players || [];
-                  const memberCount = room.players.filter(p => p.name || p.isConnected).length;
-                  const maxPlayers = 2; // Hardcoded for Battle Line
-                  const isFull = memberCount >= maxPlayers;
-                  // Simple status logic
-                  let status = 'Open';
-                  if (isFull) status = 'Full';
-                  // If we had gameover state in metadata, we could check 'Playing' vs 'Finished'
+                [...rooms]
+                  .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) // Sort by createdAt (newest first)
+                  .map((room) => {
+                    const players = room.players || [];
+                    const memberCount = room.players.filter(p => p.name || p.isConnected).length;
+                    const maxPlayers = 2; // Hardcoded for Battle Line
+                    const isFull = memberCount >= maxPlayers;
+                    // Simple status logic
+                    let status = 'Open';
+                    if (isFull) status = 'Full';
+                    // If we had gameover state in metadata, we could check 'Playing' vs 'Finished'
 
-                  const hostName = players[0]?.name || 'Unknown';
-                  const roomName = room.setupData?.roomName || `Room ${room.matchID.slice(0, 4)}`;
+                    const hostName = players[0]?.name || 'Unknown';
+                    const roomName = room.setupData?.roomName || `Room ${room.matchID.slice(0, 4)}`;
 
-                  return (
-                    <tr key={room.matchID} className="hover:bg-zinc-800/50 transition-colors group">
-                      <td className="p-5 text-center text-zinc-600 font-mono text-xs">
-                        {room.matchID.slice(0, 8)}
-                      </td>
-                      <td className="p-5 font-bold text-zinc-200">
-                        {roomName}
-                      </td>
-                      <td className="p-5 text-zinc-400 text-sm">
-                        {hostName}
-                      </td>
-                      <td className="p-5 text-sm">
-                        <div className="flex items-center gap-2 text-zinc-400">
-                          <Users size={14} />
-                          {memberCount}/{maxPlayers}
-                        </div>
-                      </td>
-                      <td className="p-5">
-                        <StatusBadge status={status} />
-                      </td>
-                      <td className="p-5 text-center">
-                        <JoinButton
-                          onJoin={() => setSelectedRoom(room)}
-                          disabled={isFull}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
+                    return (
+                      <tr key={room.matchID} className="hover:bg-zinc-800/50 transition-colors group">
+                        <td className="p-5 text-center text-zinc-600 font-mono text-xs">
+                          {room.matchID.slice(0, 8)}
+                        </td>
+                        <td className="p-5 font-bold text-zinc-200">
+                          {roomName}
+                        </td>
+                        <td className="p-5 text-zinc-400 text-sm">
+                          {hostName}
+                        </td>
+                        <td className="p-5 text-sm">
+                          <div className="flex items-center gap-2 text-zinc-400">
+                            <Users size={14} />
+                            {memberCount}/{maxPlayers}
+                          </div>
+                        </td>
+                        <td className="p-5">
+                          <StatusBadge status={status} />
+                        </td>
+                        <td className="p-5 text-center">
+                          <JoinButton
+                            onJoin={() => setSelectedRoom(room)}
+                            disabled={isFull}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>
