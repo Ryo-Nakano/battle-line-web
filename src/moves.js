@@ -239,7 +239,7 @@ export const drawCard = ({ G, ctx }, deckType) => {
 
   const deck = deckType === DECK_TYPES.TROOP ? G.troopDeck : G.tacticDeck;
   if (deck.length === 0) {
-    return; // デッキが空の場合は何もしない
+    return INVALID_MOVE; // デッキが空の場合はエラー
   }
 
   const card = deck.pop();

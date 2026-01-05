@@ -31,6 +31,10 @@ describe('Moves', () => {
         p1_slots: [],
         tactic_zone: [],
       })),
+      scoutDrawCount: null,
+      activeGuileTactic: null,
+      cardsPlayedThisTurn: [],
+      hasPlayedCard: false,
     };
     ctx = {
       currentPlayer: '0',
@@ -87,13 +91,11 @@ describe('Moves', () => {
 
     it('should allow moving environment tactic (Fog) to tactic slot', () => {
       const card = { id: 'c1', type: 'tactic', name: 'Fog' };
-      const G = {
-        flags: [{ id: 'flag-0', owner: null, p0_tactic_slots: [], p1_tactic_slots: [] }],
-        players: {
-          '0': { hand: [card] }
-        }
-      };
-      const ctx = { currentPlayer: '0' };
+      // Gを再定義せず、既存のGを修正するか、必要なプロパティを含める
+      G.flags = [{ id: 'flag-0', owner: null, p0_tactic_slots: [], p1_tactic_slots: [] }];
+      G.players['0'].hand = [card];
+
+      // const G = ... を削除し、beforeEachのGを使用
 
       moveCard({ G, ctx }, {
         cardId: 'c1',
@@ -106,84 +108,82 @@ describe('Moves', () => {
     });
 
     it('should allow returning card from hand to deck (Scout)', () => {
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1',
-            from: { area: 'hand', playerId: '0' },
-            to: { area: 'deck', deckType: 'troop' }
-        });
-        expect(result).not.toBe(INVALID_MOVE);
-        expect(G.players['0'].hand).toHaveLength(0);
-        expect(G.troopDeck).toHaveLength(3); // 元の2枚 + 戻した1枚
-        expect(G.troopDeck[G.troopDeck.length - 1].id).toBe('c1'); // トップに追加されているか
+      const result = moveCard({ G, ctx }, {
+        cardId: 'c1',
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'deck', deckType: 'troop' }
+      });
+      expect(result).not.toBe(INVALID_MOVE);
+      expect(G.players['0'].hand).toHaveLength(0);
+      expect(G.troopDeck).toHaveLength(3); // 元の2枚 + 戻した1枚
+      expect(G.troopDeck[G.troopDeck.length - 1].id).toBe('c1'); // トップに追加されているか
     });
 
     it('should NOT allow returning card from board to deck', () => {
-        // まず盤面に置く
-        G.flags[0].p0_slots = [{ id: 'c1', type: 'troop' }];
-        G.players['0'].hand = [];
+      // まず盤面に置く
+      G.flags[0].p0_slots = [{ id: 'c1', type: 'troop' }];
+      G.players['0'].hand = [];
 
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1',
-            from: { area: 'board', flagIndex: 0, slotType: 'p0_slots' },
-            to: { area: 'deck', deckType: 'troop' }
-        });
-        expect(result).toBe(INVALID_MOVE);
+      const result = moveCard({ G, ctx }, {
+        cardId: 'c1',
+        from: { area: 'board', flagIndex: 0, slotType: 'p0_slots' },
+        to: { area: 'deck', deckType: 'troop' }
+      });
+      expect(result).toBe(INVALID_MOVE);
     });
 
     it('should fail if returning card to wrong deck type', () => {
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1', // type: 'troop'
-            from: { area: 'hand', playerId: '0' },
-            to: { area: 'deck', deckType: 'tactic' }
-        });
-        expect(result).toBe(INVALID_MOVE);
+      const result = moveCard({ G, ctx }, {
+        cardId: 'c1', // type: 'troop'
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'deck', deckType: 'tactic' }
+      });
+      expect(result).toBe(INVALID_MOVE);
     });
 
     it('should move card from hand to discard', () => {
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1',
-            from: { area: 'hand', playerId: '0' },
-            to: { area: 'discard', deckType: 'troop' }
-        });
-        expect(result).not.toBe(INVALID_MOVE);
-        expect(G.troopDiscard).toHaveLength(1);
+      const result = moveCard({ G, ctx }, {
+        cardId: 'c1',
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'discard', deckType: 'troop' }
+      });
+      expect(result).not.toBe(INVALID_MOVE);
+      expect(G.troopDiscard).toHaveLength(1);
     });
 
     it('should fail if discarding to wrong pile type', () => {
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1', // type: 'troop'
-            from: { area: 'hand', playerId: '0' },
-            to: { area: 'discard', deckType: 'tactic' }
-        });
-        expect(result).toBe(INVALID_MOVE);
+      const result = moveCard({ G, ctx }, {
+        cardId: 'c1', // type: 'troop'
+        from: { area: 'hand', playerId: '0' },
+        to: { area: 'discard', deckType: 'tactic' }
+      });
+      expect(result).toBe(INVALID_MOVE);
     });
 
-    it('should move card from board to hand (retrieve)', () => {
-        // まず盤面に置く
-        G.flags[0].p0_slots = [{ id: 'c1', type: 'troop' }];
-        G.players['0'].hand = [];
+    it('should NOT allow moving card from board to hand (retrieve)', () => {
+      // まず盤面に置く
+      G.flags[0].p0_slots = [{ id: 'c1', type: 'troop' }];
+      G.players['0'].hand = [];
 
-        const result = moveCard({ G, ctx }, {
-            cardId: 'c1',
-            from: { area: 'board', flagIndex: 0, slotType: 'p0_slots' },
-            to: { area: 'hand', playerId: '0' }
-        });
-        expect(result).not.toBe(INVALID_MOVE);
-        expect(G.players['0'].hand).toHaveLength(1);
-        expect(G.flags[0].p0_slots).toHaveLength(0);
+      const result = moveCard({ G, ctx }, {
+        cardId: 'c1',
+        from: { area: 'board', flagIndex: 0, slotType: 'p0_slots' },
+        to: { area: 'hand', playerId: '0' }
+      });
+      expect(result).toBe(INVALID_MOVE);
+      expect(G.players['0'].hand).toHaveLength(0);
+      expect(G.flags[0].p0_slots).toHaveLength(1);
     });
   });
 
   describe('claimFlag', () => {
     it('should claim flag and prevent reclaiming', () => {
-      const G = {
-        flags: [{ id: 'flag-0', owner: null }],
-        players: {
-          '0': { hand: [] },
-          '1': { hand: [] }
-        }
-      };
-      const ctx = { currentPlayer: '0' };
+
+      // Gを再定義せず、必要な部分だけ上書き
+      G.flags = [{ id: 'flag-0', owner: null }];
+
+      // const G = ... を削除
+      // const ctx = ... も削除（beforeEachのものを使用）
 
       // Claim flag
       claimFlag({ G, ctx }, 0);
@@ -197,27 +197,26 @@ describe('Moves', () => {
 
     it('should prevent moving cards to/from claimed flag', () => {
       const card = { id: 'c1', type: 'troop', color: 'red', value: 1 };
-      const G = {
-        flags: [
-          { 
-            id: 'flag-0', 
-            owner: '0', // Claimed by Player 0
-            p0_slots: [card], 
-            p1_slots: [],
-            p0_tactic_slots: [],
-            p1_tactic_slots: []
-          }
-        ],
-        players: {
-          '0': { hand: [{ id: 'c2', type: 'troop', color: 'blue', value: 2 }] },
-          '1': { hand: [] }
-        },
-        troopDeck: [],
-        tacticDeck: [],
-        troopDiscard: [],
-        tacticDiscard: []
-      };
-      const ctx = { currentPlayer: '0' };
+
+      // Gを再定義せず、必要な部分だけ上書き
+      G.flags = [
+        {
+          id: 'flag-0',
+          owner: '0', // Claimed by Player 0
+          p0_slots: [card],
+          p1_slots: [],
+          p0_tactic_slots: [],
+          p1_tactic_slots: []
+        }
+      ];
+      G.players['0'].hand = [{ id: 'c2', type: 'troop', color: 'blue', value: 2 }];
+      G.players['1'].hand = [];
+      G.troopDeck = [];
+      G.tacticDeck = [];
+      G.troopDiscard = [];
+      G.tacticDiscard = [];
+
+      // const ctx = ... を削除
 
       // Try to place card on claimed flag
       const placeResult = moveCard({ G, ctx }, {
@@ -254,7 +253,7 @@ describe('Moves', () => {
       shuffleDeck({ G, ctx, random: ctx.random }, 'troop'); // random は呼び出し方によって ctx に含まれるか直接渡される
       // boardgame.io は最初の引数オブジェクトとして { G, ctx, random, events... } を渡す。
       // 分割代入: shuffleDeck({ G, random }, ...).
-      
+
       const newTop = G.troopDeck[G.troopDeck.length - 1];
       expect(newTop.id).not.toBe(initialTop.id);
       expect(G.troopDeck[0].id).toBe('t2'); // t1 が最後（トップ）になるはず（反転してるので）-> いや、array[length-1] が通常トップ。

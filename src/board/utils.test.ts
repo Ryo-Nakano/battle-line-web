@@ -11,7 +11,8 @@ describe('parseLocationId', () => {
     expect(parseLocationId('flag-0-p0_slots')).toEqual({
       area: 'board',
       flagIndex: 0,
-      slotType: 'p0_slots'
+      slotType: 'p0_slots',
+      playerId: '0'
     });
   });
 
@@ -19,7 +20,8 @@ describe('parseLocationId', () => {
     expect(parseLocationId('flag-8-p1_slots')).toEqual({
       area: 'board',
       flagIndex: 8,
-      slotType: 'p1_slots'
+      slotType: 'p1_slots',
+      playerId: '1'
     });
   });
 
@@ -27,7 +29,8 @@ describe('parseLocationId', () => {
     expect(parseLocationId('flag-4-p0_tactic_slots')).toEqual({
       area: 'board',
       flagIndex: 4,
-      slotType: 'p0_tactic_slots'
+      slotType: 'p0_tactic_slots',
+      playerId: '0'
     });
   });
 
@@ -35,7 +38,8 @@ describe('parseLocationId', () => {
     expect(parseLocationId('flag-4-p1_tactic_slots')).toEqual({
       area: 'board',
       flagIndex: 4,
-      slotType: 'p1_tactic_slots'
+      slotType: 'p1_tactic_slots',
+      playerId: '1'
     });
   });
 
