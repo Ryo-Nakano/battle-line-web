@@ -9,6 +9,7 @@ import { DiscardModal } from './DiscardModal';
 import { CardHelpModal } from './CardHelpModal';
 import { ConfirmModal } from './ConfirmModal';
 import { DrawSelectionModal } from './DrawSelectionModal';
+import { SyncErrorModal } from './SyncErrorModal';
 import { CheckCircle2, Info, Zap } from 'lucide-react';
 import { cn } from '../utils';
 import { isEnvironmentTactic } from '../constants/tactics';
@@ -39,14 +40,17 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
   const [pendingFlagIndex, setPendingFlagIndex] = useState<number | null>(null);
   const [pendingResetFlagIndex, setPendingResetFlagIndex] = useState<number | null>(null);
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
+  const [showSyncErrorModal, setShowSyncErrorModal] = useState(false);
   const [isEndTurnConfirmOpen, setIsEndTurnConfirmOpen] = useState(false);
   const [isSkipDrawConfirmOpen, setIsSkipDrawConfirmOpen] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // Sync player name
+  const hasSetPlayerName = useRef(false);
   useEffect(() => {
-    if (playerID && playerName && G.playerNames[playerID] !== playerName) {
+    if (playerID && playerName && G.playerNames[playerID] !== playerName && !hasSetPlayerName.current) {
       moves.setName(playerName);
+      hasSetPlayerName.current = true;
     }
   }, [playerID, playerName, G.playerNames, moves]);
 
@@ -60,6 +64,34 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
   const isScoutMode = G.scoutDrawCount !== null;
   const scoutReturnCount = G.scoutReturnCount || 0;
   const activeGuileTactic = G.activeGuileTactic;
+
+  // ターン終了処理のタイムアウト監視用
+  const turnEndTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ターンが変わったらタイムアウトをクリア
+  useEffect(() => {
+    if (turnEndTimeoutRef.current) {
+      clearTimeout(turnEndTimeoutRef.current);
+      turnEndTimeoutRef.current = null;
+    }
+    setShowSyncErrorModal(false);
+  }, [ctx.currentPlayer]);
+
+  // ドロー＆エンドターンのハンドリング
+  const handleDrawAndEndTurn = (type: typeof DECK_TYPES.TROOP | typeof DECK_TYPES.TACTIC) => {
+    // 3秒経ってもターンが終わらなければエラーと判断
+    if (turnEndTimeoutRef.current) clearTimeout(turnEndTimeoutRef.current);
+
+    turnEndTimeoutRef.current = setTimeout(() => {
+      // まだ自分のターンで、かつモーダルが開いている（または閉じた直後）場合にエラー表示
+      if (ctx.currentPlayer === myID) {
+        setShowSyncErrorModal(true);
+      }
+    }, 3000);
+
+    moves.drawAndEndTurn(type);
+    setIsDrawModalOpen(false);
+  };
 
   // Helper to check if card is a Guile tactic
   const isGuileTactic = (card: CardType) => {
@@ -623,12 +655,13 @@ export const MobileBoard = ({ G, ctx, moves, playerID, playerName, onLeaveRoom }
       <DrawSelectionModal
         isOpen={isDrawModalOpen}
         onClose={() => setIsDrawModalOpen(false)}
-        onSelect={(type) => {
-          moves.drawAndEndTurn(type);
-          setIsDrawModalOpen(false);
-        }}
+        onSelect={handleDrawAndEndTurn}
         troopCount={G.troopDeck.length}
         tacticCount={G.tacticDeck.length}
+      />
+      <SyncErrorModal
+        isOpen={showSyncErrorModal}
+        onReload={() => window.location.reload()}
       />
     </div>
   );
